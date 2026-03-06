@@ -1,0 +1,129 @@
+-- code snippet library - database schema
+-- run this in the supabase sql editor to bootstrap the project
+
+-- enable uuid generation
+create extension if not exists "uuid-ossp";
+
+-- ────────────────────────────────────────────
+-- snippets
+-- ────────────────────────────────────────────
+create table public.snippets (
+  id          uuid primary key default uuid_generate_v4(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  title       text not null,
+  language    text not null default 'plaintext',
+  description text default '',
+  code        text not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- index for full-text search on title + description
+create index snippets_search_idx on public.snippets
+  using gin (to_tsvector('english', title || ' ' || coalesce(description, '')));
+
+-- index for user lookups
+create index snippets_user_id_idx on public.snippets(user_id);
+
+-- auto-update updated_at on row change
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger snippets_updated_at
+  before update on public.snippets
+  for each row execute function public.handle_updated_at();
+
+-- ────────────────────────────────────────────
+-- tags
+-- ────────────────────────────────────────────
+create table public.tags (
+  id   uuid primary key default uuid_generate_v4(),
+  name text not null unique
+);
+
+create index tags_name_idx on public.tags(name);
+
+-- ────────────────────────────────────────────
+-- snippet ↔ tag (many-to-many)
+-- ────────────────────────────────────────────
+create table public.snippet_tags (
+  snippet_id uuid not null references public.snippets(id) on delete cascade,
+  tag_id     uuid not null references public.tags(id) on delete cascade,
+  primary key (snippet_id, tag_id)
+);
+
+create index snippet_tags_snippet_idx on public.snippet_tags(snippet_id);
+create index snippet_tags_tag_idx on public.snippet_tags(tag_id);
+
+-- ────────────────────────────────────────────
+-- row level security
+-- ────────────────────────────────────────────
+
+-- snippets: users can only crud their own rows
+alter table public.snippets enable row level security;
+
+create policy "users can view own snippets"
+  on public.snippets for select
+  using (auth.uid() = user_id);
+
+create policy "users can insert own snippets"
+  on public.snippets for insert
+  with check (auth.uid() = user_id);
+
+create policy "users can update own snippets"
+  on public.snippets for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "users can delete own snippets"
+  on public.snippets for delete
+  using (auth.uid() = user_id);
+
+-- tags: readable by all authenticated users, writable by all authenticated
+alter table public.tags enable row level security;
+
+create policy "authenticated users can view tags"
+  on public.tags for select
+  using (auth.role() = 'authenticated');
+
+create policy "authenticated users can insert tags"
+  on public.tags for insert
+  with check (auth.role() = 'authenticated');
+
+-- snippet_tags: follows snippet ownership
+alter table public.snippet_tags enable row level security;
+
+create policy "users can view own snippet_tags"
+  on public.snippet_tags for select
+  using (
+    exists (
+      select 1 from public.snippets
+      where snippets.id = snippet_tags.snippet_id
+        and snippets.user_id = auth.uid()
+    )
+  );
+
+create policy "users can insert own snippet_tags"
+  on public.snippet_tags for insert
+  with check (
+    exists (
+      select 1 from public.snippets
+      where snippets.id = snippet_tags.snippet_id
+        and snippets.user_id = auth.uid()
+    )
+  );
+
+create policy "users can delete own snippet_tags"
+  on public.snippet_tags for delete
+  using (
+    exists (
+      select 1 from public.snippets
+      where snippets.id = snippet_tags.snippet_id
+        and snippets.user_id = auth.uid()
+    )
+  );
