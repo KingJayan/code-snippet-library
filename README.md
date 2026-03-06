@@ -42,7 +42,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
 - file: `supabase/schema.sql`
 - **important**: refresh api schema cache in supabase project settings → api
-
+<!--
 **existing database?** if you already have the snippets table, run this migration:
 
 ```sql
@@ -55,6 +55,7 @@ create policy "anyone can view public snippets"
   on public.snippets for select
   using (public = true);
 ```
+-->
 
 4. start dev server
 
@@ -81,8 +82,6 @@ npm run dev
 - click share button on detail page to copy url
 - toggle public/private to create shareable links
 - public snippets accessible at `/public/[id]` without auth
-- browse all public snippets at `/public` with search and filtering
-- share copies public url when snippet is public
 
 **public snippets**
 - discover and explore public snippets from other users
@@ -106,14 +105,8 @@ npm run dev
 - abort-safe snippet fetches with request tracking
 - background revalidation with session cache
 - shiki highlight cache for repeat code views
-- theme preference stored locally
-- pinned snippets prioritized in sorting
-- session expiry detection with helpful errors
-- loading skeletons with "loading snippets..." message
-- smooth color transitions via css transitions
-- code preview on hover (first line, no extra fetch)
-- mobile fab hidden on non-mobile devices
-- public snippets browse with efficient filtering
+- local preferences
+- efficient filtering
 
 ## scripts
 
@@ -121,3 +114,5 @@ npm run dev
 npm run lint
 npx tsc --noEmit
 ```
+
+### made with :) by jayan
