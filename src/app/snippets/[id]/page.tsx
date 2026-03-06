@@ -15,6 +15,8 @@ import {
   Loader2,
   Pin,
   Share2,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ import {
   deleteSnippet,
   getSnippetById,
   togglePinSnippet,
+  togglePublicSnippet,
   updateSnippet,
 } from "@/lib/snippet-service";
 import { timeAgo } from "@/lib/time";
@@ -256,16 +259,38 @@ export default function SnippetDetailPage() {
     if (!snippet) return;
 
     try {
-      const url = typeof window !== "undefined" ? window.location.href : "";
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const url = snippet.public ? `${baseUrl}/public/${snippet.id}` : window.location.href;
       await navigator.clipboard.writeText(url);
       setShareState("done");
-      showToast("link copied", "success");
+      showToast(snippet.public ? "public link copied" : "link copied", "success");
       setTimeout(() => setShareState("idle"), 1200);
     } catch {
       setShareState("failed");
       showToast("share failed", "error");
       setTimeout(() => setShareState("idle"), 1200);
     }
+  }
+
+  async function handleTogglePublic() {
+    if (!snippet) return;
+
+    const newPublicState = !snippet.public;
+    setActionError(null);
+    showToast(newPublicState ? "making public..." : "making private...", "info");
+
+    const { error: serviceError } = await togglePublicSnippet(snippet.id, newPublicState);
+
+    if (serviceError) {
+      setActionError(serviceError);
+      showToast(serviceError, "error");
+      return;
+    }
+
+    const updated = { ...snippet, public: newPublicState };
+    setSnippet(updated);
+    writeCachedSnippet(updated);
+    showToast(newPublicState ? "snippet is now public" : "snippet is now private", "success");
   }
 
   function viewRaw() {
@@ -376,6 +401,15 @@ export default function SnippetDetailPage() {
                   ? "failed"
                   : "share"}
             </Button>
+            <Button
+              type="button"
+              variant={snippet.public ? "default" : "outline"}
+              size="sm"
+              onClick={() => void handleTogglePublic()}
+            >
+              {snippet.public ? <Globe className="size-4" /> : <Lock className="size-4" />}
+              {snippet.public ? "public" : "private"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={viewRaw}>
               <Eye className="size-4" />
               view raw
@@ -412,17 +446,25 @@ export default function SnippetDetailPage() {
       </section>
 
       <header className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
-          {snippet.description && (
-            <p className="text-sm text-muted-foreground">{snippet.description}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2 flex-1">
+            <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
+            {snippet.description && (
+              <p className="text-sm text-muted-foreground">{snippet.description}</p>
+            )}
+          </div>
+          {snippet.public && (
+            <Badge variant="default" className="shrink-0">
+              <Globe className="size-3 mr-1" />
+              public
+            </Badge>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{snippet.language}</Badge>
           {snippet.tags.map((tag) => (
-            <Badge key={tag.id} variant="outline">
+            <Badge key={tag.id} variant="outline" className="max-w-32 truncate" title={tag.name.length > 20 ? tag.name : undefined}>
               {tag.name}
             </Badge>
           ))}

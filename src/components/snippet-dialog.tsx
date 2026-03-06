@@ -22,7 +22,7 @@ const draftSchema = z.object({
 	language: z.string().trim().min(1, "language is required"),
 	description: z.string().max(1000, "description is too long"),
 	code: z.string().trim().min(1, "code is required"),
-	tags: z.array(z.string().trim().min(1)).max(30, "too many tags"),
+	tags: z.array(z.string().trim().min(1).max(30, "tag is too long")).max(30, "too many tags"),
 });
 
 type SnippetDialogProps = {
@@ -73,10 +73,12 @@ export function SnippetDialog({
 	}
 
 	async function submit() {
-		const tags = tagsInput
-			.split(",")
-			.map((tag) => tag.trim())
-			.filter(Boolean);
+		const tags = [...new Set(
+			tagsInput
+				.split(",")
+				.map((tag) => tag.trim().toLowerCase())
+				.filter(Boolean)
+		)];
 
 		const parsed = draftSchema.safeParse({
 			title: draft.title,

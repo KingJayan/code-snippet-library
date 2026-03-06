@@ -271,6 +271,7 @@ export default function SnippetsPage() {
           created_at: data.created_at,
           updated_at: data.updated_at,
           pinned: data.pinned,
+          public: data.public,
           tags: data.tags,
         },
         ...snippets,

@@ -8,6 +8,7 @@ export type Snippet = {
   description: string;
   code: string;
   pinned: boolean;
+  public: boolean;
   created_at: string;
   updated_at: string;
 };

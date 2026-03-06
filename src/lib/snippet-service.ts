@@ -33,10 +33,16 @@ type GetSnippetOptions = {
 };
 
 function withError<T>(error: unknown): ServiceResult<T> {
-  const message =
+  let message =
     error instanceof Error
       ? error.message
       : "something went wrong. please try again.";
+
+  if (message.toLowerCase().includes("jwt") || 
+      message.toLowerCase().includes("token") ||
+      message.toLowerCase().includes("session")) {
+    message = "session expired. refresh the page and sign in again.";
+  }
 
   return { data: null, error: message };
 }
@@ -58,6 +64,10 @@ async function requireUserId(client: NonNullable<typeof supabase>) {
   } = await client.auth.getUser();
 
   if (error) {
+    if (error.message.toLowerCase().includes("jwt") || 
+        error.message.toLowerCase().includes("token")) {
+      throw new Error("session expired. refresh the page and sign in again.");
+    }
     throw new Error(error.message);
   }
 
@@ -190,7 +200,7 @@ export async function listSnippets(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, pinned, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .order("pinned", { ascending: false })
       .order("updated_at", { ascending: false })
@@ -227,7 +237,7 @@ export async function getSnippetById(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, code, pinned, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("id", id)
       .single();
@@ -268,7 +278,7 @@ export async function createSnippet(
         description: draft.description.trim(),
         code: draft.code,
       })
-      .select("id, user_id, title, language, description, code, pinned, created_at, updated_at")
+      .select("id, user_id, title, language, description, code, pinned, public, created_at, updated_at")
       .single();
 
     if (error) {
@@ -320,7 +330,7 @@ export async function updateSnippet(
       })
       .eq("id", id)
       .eq("user_id", userId)
-      .select("id, user_id, title, language, description, code, pinned, created_at, updated_at")
+      .select("id, user_id, title, language, description, code, pinned, public, created_at, updated_at")
       .single();
 
     if (error) {
@@ -407,5 +417,57 @@ export async function togglePinSnippet(
     return { data: true, error: null };
   } catch (error) {
     return withError<boolean>(error);
+  }
+}
+
+export async function togglePublicSnippet(
+  id: string,
+  isPublic: boolean
+): Promise<ServiceResult<boolean>> {
+  try {
+    const client = requireClient();
+    const userId = await requireUserId(client);
+
+    const { error } = await client
+      .from("snippets")
+      .update({ public: isPublic })
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to update public status");
+    }
+
+    return { data: true, error: null };
+  } catch (error) {
+    return withError<boolean>(error);
+  }
+}
+
+export async function getPublicSnippetById(
+  id: string
+): Promise<ServiceResult<SnippetWithTags>> {
+  try {
+    const client = requireClient();
+
+    const { data, error } = await client
+      .from("snippets")
+      .select(
+        "id, user_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+      )
+      .eq("id", id)
+      .eq("public", true)
+      .single();
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "snippet not found or not public");
+    }
+
+    return {
+      data: normalizeSnippet(data as SnippetRow),
+      error: null,
+    };
+  } catch (error) {
+    return withError<SnippetWithTags>(error);
   }
 }

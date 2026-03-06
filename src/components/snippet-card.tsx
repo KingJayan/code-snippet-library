@@ -81,12 +81,13 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
             <Badge
               key={tag.id}
               variant="outline"
-              className="cursor-pointer text-[10px] transition-colors hover:bg-accent"
+              className="max-w-24 cursor-pointer truncate text-[10px] transition-colors hover:bg-accent"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onTagClick?.(tag.name);
               }}
+              title={tag.name.length > 20 ? tag.name : undefined}
             >
               {tag.name}
             </Badge>

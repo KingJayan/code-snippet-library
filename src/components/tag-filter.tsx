@@ -29,7 +29,9 @@ export function TagFilter({ tags, activeTag, onTagChange }: TagFilterProps) {
 						aria-pressed={isActive}
 						aria-label={`filter by tag ${tag}`}
 					>
-						<Badge variant={isActive ? "secondary" : "outline"}>{tag}</Badge>
+						<Badge variant={isActive ? "secondary" : "outline"} className="max-w-32 truncate" title={tag.length > 20 ? tag : undefined}>
+							{tag}
+						</Badge>
 					</Button>
 				);
 			})}

@@ -15,6 +15,7 @@ create table public.snippets (
   description text default '',
   code        text not null,
   pinned      boolean not null default false,
+  public      boolean not null default false,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -26,6 +27,7 @@ create index snippets_search_idx on public.snippets
 -- index for user lookups + pinned sorting
 create index snippets_user_id_idx on public.snippets(user_id);
 create index snippets_user_pinned_idx on public.snippets(user_id, pinned desc, updated_at desc);
+create index snippets_public_idx on public.snippets(public, created_at desc) where public = true;
 
 -- auto-update updated_at on row change
 create or replace function public.handle_updated_at()
@@ -66,12 +68,16 @@ create index snippet_tags_tag_idx on public.snippet_tags(tag_id);
 -- row level security
 -- ────────────────────────────────────────────
 
--- snippets: users can only crud their own rows
+-- snippets: users can only crud their own rows, but anyone can view public snippets
 alter table public.snippets enable row level security;
 
 create policy "users can view own snippets"
   on public.snippets for select
   using (auth.uid() = user_id);
+
+create policy "anyone can view public snippets"
+  on public.snippets for select
+  using (public = true);
 
 create policy "users can insert own snippets"
   on public.snippets for insert
@@ -131,9 +137,16 @@ create policy "users can delete own snippet_tags"
   );
 
 -- ────────────────────────────────────────────
--- migration: add pinned column to existing db
+-- migration: add pinned + public columns to existing db
 -- ────────────────────────────────────────────
 -- run this if you already have a snippets table:
 --
 -- alter table public.snippets add column pinned boolean not null default false;
+-- alter table public.snippets add column public boolean not null default false;
 -- create index snippets_user_pinned_idx on public.snippets(user_id, pinned desc, updated_at desc);
+-- create index snippets_public_idx on public.snippets(public, created_at desc) where public = true;
+--
+-- add public viewing policy:
+-- create policy "anyone can view public snippets"
+--   on public.snippets for select
+--   using (public = true);
