@@ -19,7 +19,7 @@ import { SearchBar } from "@/components/search-bar";
 import { SnippetCard } from "@/components/snippet-card";
 import { SnippetDialog } from "@/components/snippet-dialog";
 import { TagFilter } from "@/components/tag-filter";
-import { createSnippet, listSnippets } from "@/lib/snippet-service";
+import { createSnippet, listSnippets, togglePinSnippet } from "@/lib/snippet-service";
 import {
   getCurrentUser,
   sendMagicLink,
@@ -270,6 +270,7 @@ export default function SnippetsPage() {
           description: data.description,
           created_at: data.created_at,
           updated_at: data.updated_at,
+          pinned: data.pinned,
           tags: data.tags,
         },
         ...snippets,
@@ -281,6 +282,28 @@ export default function SnippetsPage() {
     }
 
     return null;
+  }
+
+  async function handleTogglePin(id: string, pinned: boolean) {
+    showToast(pinned ? "pinning..." : "unpinning...", "info");
+
+    const { error: serviceError } = await togglePinSnippet(id, pinned);
+
+    if (serviceError) {
+      showToast(serviceError, "error");
+      return;
+    }
+
+    const next = snippets.map((s) =>
+      s.id === id ? { ...s, pinned } : s
+    ).sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
+
+    setSnippets(next);
+    writeCachedSnippets(next);
+    showToast(pinned ? "pinned" : "unpinned", "success");
   }
 
   async function handleRefresh() {
@@ -442,6 +465,7 @@ export default function SnippetsPage() {
                   <SnippetCard
                     snippet={snippet}
                     onTagClick={(tag) => setActiveTag(tag)}
+                    onTogglePin={handleTogglePin}
                   />
                 </div>
               );

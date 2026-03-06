@@ -190,8 +190,9 @@ export async function listSnippets(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, title, language, description, pinned, created_at, updated_at, snippet_tags(tags(id, name))"
       )
+      .order("pinned", { ascending: false })
       .order("updated_at", { ascending: false })
       .limit(requestedLimit);
 
@@ -226,7 +227,7 @@ export async function getSnippetById(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, code, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, title, language, description, code, pinned, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("id", id)
       .single();
@@ -267,7 +268,7 @@ export async function createSnippet(
         description: draft.description.trim(),
         code: draft.code,
       })
-      .select("id, user_id, title, language, description, code, created_at, updated_at")
+      .select("id, user_id, title, language, description, code, pinned, created_at, updated_at")
       .single();
 
     if (error) {
@@ -319,7 +320,7 @@ export async function updateSnippet(
       })
       .eq("id", id)
       .eq("user_id", userId)
-      .select("id, user_id, title, language, description, code, created_at, updated_at")
+      .select("id, user_id, title, language, description, code, pinned, created_at, updated_at")
       .single();
 
     if (error) {
@@ -377,6 +378,30 @@ export async function deleteSnippet(id: string): Promise<ServiceResult<boolean>>
 
     if (error) {
       throw new Error(parseSupabaseError(error) ?? "failed to delete snippet");
+    }
+
+    return { data: true, error: null };
+  } catch (error) {
+    return withError<boolean>(error);
+  }
+}
+
+export async function togglePinSnippet(
+  id: string,
+  pinned: boolean
+): Promise<ServiceResult<boolean>> {
+  try {
+    const client = requireClient();
+    const userId = await requireUserId(client);
+
+    const { error } = await client
+      .from("snippets")
+      .update({ pinned })
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to pin snippet");
     }
 
     return { data: true, error: null };

@@ -13,6 +13,8 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Pin,
+  Share2,
 } from "lucide-react";
 import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ import { SnippetDialog } from "@/components/snippet-dialog";
 import {
   deleteSnippet,
   getSnippetById,
+  togglePinSnippet,
   updateSnippet,
 } from "@/lib/snippet-service";
 import { timeAgo } from "@/lib/time";
@@ -77,6 +80,7 @@ export default function SnippetDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [shareState, setShareState] = useState<"idle" | "done" | "failed">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<ToastTone>("info");
 
@@ -227,6 +231,43 @@ export default function SnippetDetailPage() {
     return null;
   }
 
+  async function handleTogglePin() {
+    if (!snippet) return;
+
+    const newPinnedState = !snippet.pinned;
+    setActionError(null);
+    showToast(newPinnedState ? "pinning..." : "unpinning...", "info");
+
+    const { error: serviceError } = await togglePinSnippet(snippet.id, newPinnedState);
+
+    if (serviceError) {
+      setActionError(serviceError);
+      showToast(serviceError, "error");
+      return;
+    }
+
+    const updated = { ...snippet, pinned: newPinnedState };
+    setSnippet(updated);
+    writeCachedSnippet(updated);
+    showToast(newPinnedState ? "pinned" : "unpinned", "success");
+  }
+
+  async function handleShare() {
+    if (!snippet) return;
+
+    try {
+      const url = typeof window !== "undefined" ? window.location.href : "";
+      await navigator.clipboard.writeText(url);
+      setShareState("done");
+      showToast("link copied", "success");
+      setTimeout(() => setShareState("idle"), 1200);
+    } catch {
+      setShareState("failed");
+      showToast("share failed", "error");
+      setTimeout(() => setShareState("idle"), 1200);
+    }
+  }
+
   function viewRaw() {
     if (!snippet) return;
 
@@ -327,6 +368,14 @@ export default function SnippetDetailPage() {
                   ? "failed"
                   : "copy"}
             </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => void handleShare()}>
+              <Share2 className="size-4" />
+              {shareState === "done"
+                ? "copied"
+                : shareState === "failed"
+                  ? "failed"
+                  : "share"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={viewRaw}>
               <Eye className="size-4" />
               view raw
@@ -334,6 +383,15 @@ export default function SnippetDetailPage() {
             <Button type="button" variant="outline" size="sm" onClick={downloadSnippet}>
               <Download className="size-4" />
               download
+            </Button>
+            <Button
+              type="button"
+              variant={snippet.pinned ? "default" : "outline"}
+              size="sm"
+              onClick={() => void handleTogglePin()}
+            >
+              <Pin className={`size-4 ${snippet.pinned ? "fill-current" : ""}`} />
+              {snippet.pinned ? "pinned" : "pin"}
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" />

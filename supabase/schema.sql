@@ -14,6 +14,7 @@ create table public.snippets (
   language    text not null default 'plaintext',
   description text default '',
   code        text not null,
+  pinned      boolean not null default false,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -22,8 +23,9 @@ create table public.snippets (
 create index snippets_search_idx on public.snippets
   using gin (to_tsvector('english', title || ' ' || coalesce(description, '')));
 
--- index for user lookups
+-- index for user lookups + pinned sorting
 create index snippets_user_id_idx on public.snippets(user_id);
+create index snippets_user_pinned_idx on public.snippets(user_id, pinned desc, updated_at desc);
 
 -- auto-update updated_at on row change
 create or replace function public.handle_updated_at()
@@ -127,3 +129,11 @@ create policy "users can delete own snippet_tags"
         and snippets.user_id = auth.uid()
     )
   );
+
+-- ────────────────────────────────────────────
+-- migration: add pinned column to existing db
+-- ────────────────────────────────────────────
+-- run this if you already have a snippets table:
+--
+-- alter table public.snippets add column pinned boolean not null default false;
+-- create index snippets_user_pinned_idx on public.snippets(user_id, pinned desc, updated_at desc);

@@ -7,6 +7,7 @@ export type Snippet = {
   language: string;
   description: string;
   code: string;
+  pinned: boolean;
   created_at: string;
   updated_at: string;
 };

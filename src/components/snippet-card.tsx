@@ -2,25 +2,30 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Clock, Code2, ArrowUpRight } from "lucide-react";
+import { Clock, Code2, ArrowUpRight, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LANGUAGES } from "@/lib/constants";
 import { timeAgo } from "@/lib/time";
 import type { SnippetSummaryWithTags } from "@/lib/types";
 
-// props --------
 interface SnippetCardProps {
   snippet: SnippetSummaryWithTags;
   onTagClick?: (tagName: string) => void;
+  onTogglePin?: (id: string, pinned: boolean) => void;
 }
 
-//component ------------
-function SnippetCardRaw({ snippet, onTagClick }: SnippetCardProps) {
+function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) {
   const lang = LANGUAGES[snippet.language] ?? {
     label: snippet.language,
     shiki: snippet.language,
   };
+
+  function handlePinClick(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    onTogglePin?.(snippet.id, !snippet.pinned);
+  }
 
   return (
     <Link
@@ -45,14 +50,25 @@ function SnippetCardRaw({ snippet, onTagClick }: SnippetCardProps) {
           )}
         </div>
 
-        {/* language badge - always visible */}
-        <Badge
-          variant="secondary"
-          className="shrink-0 font-mono text-[10px] uppercase tracking-widest"
-        >
-          <Code2 className="size-3" />
-          {lang.label}
-        </Badge>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            onClick={handlePinClick}
+            className={`rounded p-1 transition-colors hover:bg-accent ${
+              snippet.pinned ? "text-yellow-500" : "text-muted-foreground"
+            }`}
+            aria-label={snippet.pinned ? "unpin" : "pin"}
+          >
+            <Pin className={`size-3.5 ${snippet.pinned ? "fill-current" : ""}`} />
+          </button>
+
+          <Badge
+            variant="secondary"
+            className="font-mono text-[10px] uppercase tracking-widest"
+          >
+            <Code2 className="size-3" />
+            {lang.label}
+          </Badge>
+        </div>
       </div>
 
       <Separator className="opacity-40" />

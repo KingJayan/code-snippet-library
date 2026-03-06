@@ -1,16 +1,47 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Loader2 } from "lucide-react";
+import { Copy, Loader2, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LANGUAGES } from "@/lib/constants";
 
 const HIGHLIGHT_CACHE = new Map<string, string>();
 
-function cacheKeyFor(code: string, language: string) {
+const THEMES = [
+  { value: "github-dark", label: "github dark" },
+  { value: "github-light", label: "github light" },
+  { value: "dracula", label: "dracula" },
+  { value: "nord", label: "nord" },
+  { value: "monokai", label: "monokai" },
+  { value: "one-dark-pro", label: "one dark" },
+] as const;
+
+type Theme = typeof THEMES[number]["value"];
+
+function getStoredTheme(): Theme {
+  if (typeof window === "undefined") return "github-dark";
+  try {
+    const stored = localStorage.getItem("code-theme");
+    const isValid = THEMES.some((t) => t.value === stored);
+    return isValid ? (stored as Theme) : "github-dark";
+  } catch {
+    return "github-dark";
+  }
+}
+
+function setStoredTheme(theme: Theme) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("code-theme", theme);
+  } catch {
+    return;
+  }
+}
+
+function cacheKeyFor(code: string, language: string, theme: string) {
 	const start = code.slice(0, 120);
 	const end = code.slice(-120);
-	return `${language}:${code.length}:${start}:${end}`;
+	return `${theme}:${language}:${code.length}:${start}:${end}`;
 }
 
 type CodeBlockProps = {
@@ -22,13 +53,33 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 	const [html, setHtml] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+	const [theme, setTheme] = useState<Theme>("github-dark");
+	const [showThemes, setShowThemes] = useState(false);
+
+	useEffect(() => {
+		setTheme(getStoredTheme());
+	}, []);
+
+	useEffect(() => {
+		if (!showThemes) return;
+
+		function handleClickOutside(event: MouseEvent) {
+			const target = event.target as HTMLElement;
+			if (!target.closest("[data-theme-selector]")) {
+				setShowThemes(false);
+			}
+		}
+
+		document.addEventListener("click", handleClickOutside);
+		return () => document.removeEventListener("click", handleClickOutside);
+	}, [showThemes]);
 
 	const shikiLanguage = useMemo(
 		() => LANGUAGES[language]?.shiki ?? "plaintext",
 		[language]
 	);
 
-	const cacheKey = useMemo(() => cacheKeyFor(code, shikiLanguage), [code, shikiLanguage]);
+	const cacheKey = useMemo(() => cacheKeyFor(code, shikiLanguage, theme), [code, shikiLanguage, theme]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -50,7 +101,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 				const { codeToHtml } = await import("shiki");
 				const output = await codeToHtml(code, {
 					lang: shikiLanguage,
-					theme: "github-dark",
+					theme: theme,
 				});
 
 				if (!cancelled) {
@@ -69,7 +120,13 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 		return () => {
 			cancelled = true;
 		};
-	}, [cacheKey, code, shikiLanguage]);
+	}, [cacheKey, code, shikiLanguage, theme]);
+
+	function changeTheme(newTheme: Theme) {
+		setTheme(newTheme);
+		setStoredTheme(newTheme);
+		setShowThemes(false);
+	}
 
 	async function copyCode() {
 		try {
@@ -86,20 +143,48 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 		<section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xs">
 			<div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
 				<span className="font-mono text-xs text-zinc-300">{language}</span>
-				<Button
-					variant="ghost"
-					size="xs"
-					  className="text-zinc-300 hover:bg-zinc-800 hover:text-white"
-					onClick={copyCode}
-					aria-label="copy code"
-				>
-					<Copy className="size-3" />
-					{copyState === "done"
-						? "copied"
-						: copyState === "failed"
-							? "failed"
-							: "copy"}
-				</Button>
+				<div className="flex items-center gap-1">
+					<div className="relative" data-theme-selector>
+						<Button
+							variant="ghost"
+							size="xs"
+							className="text-zinc-300 hover:bg-zinc-800 hover:text-white"
+							onClick={() => setShowThemes(!showThemes)}
+							aria-label="change theme"
+						>
+							<Palette className="size-3" />
+						</Button>
+						{showThemes && (
+							<div className="absolute right-0 top-full z-50 mt-1 min-w-32 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
+								{THEMES.map((t) => (
+									<button
+										key={t.value}
+										onClick={() => changeTheme(t.value)}
+										className={`w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-800 ${
+											theme === t.value ? "bg-zinc-800 text-white" : "text-zinc-300"
+										}`}
+									>
+										{t.label}
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+					<Button
+						variant="ghost"
+						size="xs"
+						className="text-zinc-300 hover:bg-zinc-800 hover:text-white"
+						onClick={copyCode}
+						aria-label="copy code"
+					>
+						<Copy className="size-3" />
+						{copyState === "done"
+							? "copied"
+							: copyState === "failed"
+								? "failed"
+								: "copy"}
+					</Button>
+				</div>
 			</div>
 
 			{error && (
