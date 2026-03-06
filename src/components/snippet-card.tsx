@@ -35,7 +35,7 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
                  hover:border-foreground/20 hover:shadow-sm
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       tabIndex={0}
-      title={snippet.code?.split("\n")[0]?.slice(0, 100) || snippet.title}
+      title={snippet.title}
     >
       {/* -- header row -------- */}
       <div className="flex items-start justify-between gap-3">
