@@ -444,6 +444,47 @@ export async function togglePublicSnippet(
   }
 }
 
+export async function listPublicSnippets(
+  options?: ListSnippetsOptions
+): Promise<ServiceResult<SnippetSummaryWithTags[]>> {
+  try {
+    const client = requireClient();
+
+    const requestedLimit =
+      typeof options?.limit === "number" && options.limit > 0
+        ? Math.min(options.limit, MAX_LIST_ITEMS)
+        : MAX_LIST_ITEMS;
+
+    let query = client
+      .from("snippets")
+      .select(
+        "id, user_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+      )
+      .eq("public", true)
+      .order("pinned", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .limit(requestedLimit);
+
+    if (options?.signal && typeof (query as { abortSignal?: unknown }).abortSignal === "function") {
+      query = (query as unknown as { abortSignal: (signal: AbortSignal) => typeof query })
+        .abortSignal(options.signal);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to fetch public snippets");
+    }
+
+    return {
+      data: (data as SnippetSummaryRow[]).map(normalizeSnippetSummary),
+      error: null,
+    };
+  } catch (error) {
+    return withError<SnippetSummaryWithTags[]>(error);
+  }
+}
+
 export async function getPublicSnippetById(
   id: string
 ): Promise<ServiceResult<SnippetWithTags>> {

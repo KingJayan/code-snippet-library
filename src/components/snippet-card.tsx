@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Clock, Code2, ArrowUpRight, Pin } from "lucide-react";
+import { Clock, Code2, ArrowUpRight, Pin, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LANGUAGES } from "@/lib/constants";
@@ -35,6 +35,7 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
                  hover:border-foreground/20 hover:shadow-sm
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       tabIndex={0}
+      title={snippet.code?.split("\n")[0]?.slice(0, 100) || snippet.title}
     >
       {/* -- header row -------- */}
       <div className="flex items-start justify-between gap-3">
@@ -60,6 +61,13 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
           >
             <Pin className={`size-3.5 ${snippet.pinned ? "fill-current" : ""}`} />
           </button>
+
+          {snippet.public && (
+            <Badge variant="outline" className="shrink-0 text-[9px] px-1.5 py-0.5">
+              <Globe className="size-2.5 mr-0.5" />
+              public
+            </Badge>
+          )}
 
           <Badge
             variant="secondary"

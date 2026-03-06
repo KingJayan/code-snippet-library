@@ -5,13 +5,16 @@ minimal, fast personal snippet vault built with next.js, supabase, shadcn ui, an
 ## features
 
 - pin important snippets to top of list
-- make snippets public and share with anyone
+- make snippets public and share with anyone (with public browse page)
 - switch code themes (github-dark, github-light, dracula, nord, monokai, one-dark-pro)
 - tag-based filtering with search (duplicate tags auto-removed, 30 char max)
 - magic link authentication with session expiry handling
-- keyboard shortcuts for quick actions
+- keyboard shortcuts for quick actions (n, ?, esc)
+- snippet code preview on hover (first line in tooltip)
 - virtualized list for performance
 - loading skeletons for smoother ux
+- public snippets discovery page at `/public`
+- mobile-friendly floating action button
 
 ## stack
 
@@ -62,6 +65,8 @@ npm run dev
 ## keyboard shortcuts
 
 - `n` on list page: open new snippet dialog
+- `?` on list page: show all shortcuts overlay
+- `esc`: close dialog, clear search, clear tag filter, or close shortcuts overlay
 - `cmd/ctrl + enter` in dialog: save snippet
 - `e` on detail page: edit snippet
 - `c` on detail page: copy snippet code
@@ -76,7 +81,14 @@ npm run dev
 - click share button on detail page to copy url
 - toggle public/private to create shareable links
 - public snippets accessible at `/public/[id]` without auth
+- browse all public snippets at `/public` with search and filtering
 - share copies public url when snippet is public
+
+**public snippets**
+- discover and explore public snippets from other users
+- search by title, language, or tags
+- filter by tags for discovery
+- credit to snippet creators in footer
 
 **themes**
 - click palette icon on code blocks to switch syntax themes
@@ -97,7 +109,11 @@ npm run dev
 - theme preference stored locally
 - pinned snippets prioritized in sorting
 - session expiry detection with helpful errors
-- loading skeletons for auth panel and snippets list
+- loading skeletons with "loading snippets..." message
+- smooth color transitions via css transitions
+- code preview on hover (first line, no extra fetch)
+- mobile fab hidden on non-mobile devices
+- public snippets browse with efficient filtering
 
 ## scripts
 

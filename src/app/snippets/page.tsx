@@ -9,10 +9,12 @@ import {
   useState,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Code2 } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 import { AuthPanel } from "@/components/auth-panel";
+import { FloatingActionButton } from "@/components/floating-action-button";
 import { InlineToast, type ToastTone } from "@/components/inline-toast";
+import { ShortcutsPanel } from "@/components/shortcuts-panel";
 import { UserChip } from "@/components/user-chip";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/search-bar";
@@ -82,6 +84,7 @@ export default function SnippetsPage() {
   const deferredSearch = useDeferredValue(search);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<ToastTone>("info");
 
@@ -194,15 +197,34 @@ export default function SnippetsPage() {
         return;
       }
 
-      if (event.key.toLowerCase() === "n") {
+      const key = event.key.toLowerCase();
+
+      if (key === "n") {
         event.preventDefault();
         setDialogOpen(true);
+      }
+
+      if (key === "?") {
+        event.preventDefault();
+        setShowShortcuts(true);
+      }
+
+      if (key === "escape") {
+        if (dialogOpen) {
+          setDialogOpen(false);
+        } else if (showShortcuts) {
+          setShowShortcuts(false);
+        } else if (search) {
+          setSearch("");
+        } else if (activeTag) {
+          setActiveTag(null);
+        }
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [dialogOpen, showShortcuts, search, activeTag]);
 
   const allTags = useMemo(() => {
     const unique = new Set<string>();
@@ -430,6 +452,7 @@ export default function SnippetsPage() {
 
       {loading ? (
         <section className="grid gap-3" aria-live="polite">
+          <p className="text-sm text-muted-foreground">loading snippets...</p>
           {Array.from({ length: 6 }).map((_, idx) => (
             <div
               key={idx}
@@ -438,10 +461,19 @@ export default function SnippetsPage() {
           ))}
         </section>
       ) : filteredSnippets.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-8 text-center">
-          <h2 className="text-sm font-medium">no snippets found</h2>
+        <section className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-12 text-center">
+          <Code2 className="mx-auto size-12 text-muted-foreground/50" />
+          <h2 className="mt-4 text-sm font-medium">
+            {snippets.length === 0 ? "no snippets yet" : "no snippets found"}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            adjust search/filter or add a new snippet
+            {snippets.length === 0 ? (
+              <>
+                press <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs">n</kbd> to create your first one
+              </>
+            ) : (
+              "adjust search/filter or add a new snippet"
+            )}
           </p>
         </section>
       ) : (
@@ -480,6 +512,21 @@ export default function SnippetsPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSave={handleCreate}
+      />
+
+      <ShortcutsPanel
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        shortcuts={[
+          { key: "n", action: "new snippet" },
+          { key: "?", action: "show shortcuts" },
+          { key: "esc", action: "close dialog / clear search / clear tag filter" },
+        ]}
+      />
+
+      <FloatingActionButton
+        onClick={() => setDialogOpen(true)}
+        disabled={!isAuthenticated}
       />
     </main>
   );

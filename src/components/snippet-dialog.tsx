@@ -140,13 +140,21 @@ export function SnippetDialog({
 					}}
 				>
 					<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
-						<Input
-							value={draft.title}
-							onChange={(event) => updateField("title", event.target.value)}
-							placeholder="title"
-							maxLength={120}
-							autoFocus
-						/>
+						<label className="flex flex-col gap-1.5">
+							<div className="flex items-center justify-between">
+								<span className="text-xs text-muted-foreground">title</span>
+								<span className="text-[10px] text-muted-foreground">
+									{draft.title.length}/120
+								</span>
+							</div>
+							<Input
+								value={draft.title}
+								onChange={(event) => updateField("title", event.target.value)}
+								placeholder="title"
+								maxLength={120}
+								autoFocus
+							/>
+						</label>
 
 						<div className="grid gap-3 sm:grid-cols-2">
 							<label className="flex flex-col gap-1.5">
@@ -174,12 +182,21 @@ export function SnippetDialog({
 							</label>
 						</div>
 
-						<Textarea
-							value={draft.description}
-							onChange={(event) => updateField("description", event.target.value)}
-							placeholder="short description"
-							className="min-h-20"
-						/>
+						<label className="flex flex-col gap-1.5">
+							<div className="flex items-center justify-between">
+								<span className="text-xs text-muted-foreground">description</span>
+								<span className="text-[10px] text-muted-foreground">
+									{draft.description.length}/1000
+								</span>
+							</div>
+							<Textarea
+								value={draft.description}
+								onChange={(event) => updateField("description", event.target.value)}
+								placeholder="short description"
+								className="min-h-20"
+								maxLength={1000}
+							/>
+						</label>
 
 						<Textarea
 							value={draft.code}
