@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Plus, RefreshCw, Code2 } from "lucide-react";
+import { Plus, RefreshCw, Code2, ChevronDown } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 import { AuthPanel } from "@/components/auth-panel";
 import { FloatingActionButton } from "@/components/floating-action-button";
@@ -17,20 +17,98 @@ import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { ShortcutsPanel } from "@/components/shortcuts-panel";
 import { UserChip } from "@/components/user-chip";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { SearchBar } from "@/components/search-bar";
 import { SnippetCard } from "@/components/snippet-card";
 import { SnippetDialog } from "@/components/snippet-dialog";
 import { TagFilter } from "@/components/tag-filter";
-import { createSnippet, listSnippets, togglePinSnippet } from "@/lib/snippet-service";
+import {
+  createSnippet,
+  createWorkspace,
+  deleteWorkspace,
+  listSnippets,
+  listWorkspaces,
+  renameWorkspace,
+  togglePinSnippet,
+  toggleWorkspacePublic,
+} from "@/lib/snippet-service";
 import {
   getCurrentUser,
   sendMagicLink,
   signOutUser,
   supabase,
 } from "@/lib/supabase";
-import type { SnippetDraft, SnippetSummaryWithTags } from "@/lib/types";
+import type { SnippetDraft, SnippetSummaryWithTags, Workspace } from "@/lib/types";
 
 const LIST_CACHE_KEY = "snips.list.cache.v1";
+
+type SearchTokens = {
+  query: string;
+  tag: string | null;
+  language: string | null;
+  pinnedOnly: boolean;
+};
+
+function parseSearchTokens(input: string): SearchTokens {
+  const parts = input.trim().split(/\s+/).filter(Boolean);
+  const queryParts: string[] = [];
+  let tag: string | null = null;
+  let language: string | null = null;
+  let pinnedOnly = false;
+
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+
+    if (lower.startsWith("tag:")) {
+      const value = lower.slice(4).trim();
+      if (value) tag = value;
+      continue;
+    }
+
+    if (lower.startsWith("lang:") || lower.startsWith("language:")) {
+      const value = lower.includes(":") ? lower.split(":").slice(1).join(":").trim() : "";
+      if (value) language = value;
+      continue;
+    }
+
+    if (lower === "is:pinned" || lower === "pinned:true") {
+      pinnedOnly = true;
+      continue;
+    }
+
+    queryParts.push(part);
+  }
+
+  return {
+    query: queryParts.join(" ").toLowerCase(),
+    tag,
+    language,
+    pinnedOnly,
+  };
+}
+
+function snippetMatchesText(snippet: SnippetSummaryWithTags, query: string) {
+  if (!query) return true;
+
+  const haystack = [
+    snippet.title,
+    snippet.description,
+    snippet.language,
+    ...snippet.tags.map((tag) => tag.name),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
 
 function isTypingElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -43,11 +121,15 @@ function isTypingElement(target: EventTarget | null) {
   );
 }
 
-function readCachedSnippets(): SnippetSummaryWithTags[] {
+function getListCacheKey(workspaceId: string | null) {
+  return `${LIST_CACHE_KEY}:${workspaceId ?? "none"}`;
+}
+
+function readCachedSnippets(workspaceId: string | null): SnippetSummaryWithTags[] {
   if (typeof window === "undefined") return [];
 
   try {
-    const raw = window.sessionStorage.getItem(LIST_CACHE_KEY);
+    const raw = window.sessionStorage.getItem(getListCacheKey(workspaceId));
     if (!raw) return [];
 
     const parsed = JSON.parse(raw) as SnippetSummaryWithTags[];
@@ -59,11 +141,11 @@ function readCachedSnippets(): SnippetSummaryWithTags[] {
   }
 }
 
-function writeCachedSnippets(next: SnippetSummaryWithTags[]) {
+function writeCachedSnippets(workspaceId: string | null, next: SnippetSummaryWithTags[]) {
   if (typeof window === "undefined") return;
 
   try {
-    window.sessionStorage.setItem(LIST_CACHE_KEY, JSON.stringify(next));
+    window.sessionStorage.setItem(getListCacheKey(workspaceId), JSON.stringify(next));
   } catch {
     return;
   }
@@ -87,17 +169,43 @@ export default function SnippetsPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<ToastTone>("info");
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const [workspaceEditorOpen, setWorkspaceEditorOpen] = useState(false);
+  const [workspaceEditorMode, setWorkspaceEditorMode] = useState<"create" | "rename">("create");
+  const [workspaceNameInput, setWorkspaceNameInput] = useState("");
+  const [deleteWorkspaceOpen, setDeleteWorkspaceOpen] = useState(false);
 
   const listParentRef = useRef<HTMLDivElement | null>(null);
-  const requestIdRef = useRef(0);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const fetchSeqRef = useRef(0);
+  const activeWorkspaceIdRef = useRef<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
-  function showToast(message: string, tone: ToastTone = "info") {
+  const showToast = useCallback((message: string, tone: ToastTone = "info") => {
     setToastMessage(message);
     setToastTone(tone);
-    window.setTimeout(() => {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    toastTimerRef.current = window.setTimeout(() => {
       setToastMessage((current) => (current === message ? null : current));
     }, 1800);
-  }
+  }, []);
+
+  useEffect(() => {
+    activeWorkspaceIdRef.current = activeWorkspaceId;
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const checkSession = useCallback(async () => {
     setAuthLoading(true);
@@ -123,11 +231,14 @@ export default function SnippetsPage() {
     }
   }, []);
 
-  const fetchSnippets = useCallback(async (signal?: AbortSignal) => {
-    const requestId = ++requestIdRef.current;
-    const { data, error: serviceError } = await listSnippets({ signal });
+  const fetchSnippets = useCallback(async (workspaceId: string | null, signal?: AbortSignal) => {
+    const requestId = ++fetchSeqRef.current;
+    const { data, error: serviceError } = await listSnippets({
+      signal,
+      workspaceId: workspaceId ?? undefined,
+    });
 
-    if (requestId !== requestIdRef.current || signal?.aborted) {
+    if (requestId !== fetchSeqRef.current || signal?.aborted) {
       return;
     }
 
@@ -145,7 +256,32 @@ export default function SnippetsPage() {
     setSnippets(nextSnippets);
     setLoading(false);
     setRefreshing(false);
-    writeCachedSnippets(nextSnippets);
+    writeCachedSnippets(workspaceId, nextSnippets);
+  }, []);
+
+  const fetchWorkspaces = useCallback(async () => {
+    const { data, error: serviceError } = await listWorkspaces();
+
+    if (serviceError) {
+      setError(serviceError);
+      setWorkspaces([]);
+      setActiveWorkspaceId(null);
+      return null;
+    }
+
+    const next = data ?? [];
+    setWorkspaces(next);
+
+    const currentWorkspaceId = activeWorkspaceIdRef.current;
+    const resolvedActive = next.some((workspace) => workspace.id === currentWorkspaceId)
+      ? currentWorkspaceId
+      : (next[0]?.id ?? null);
+
+    if (resolvedActive !== currentWorkspaceId) {
+      setActiveWorkspaceId(resolvedActive);
+    }
+
+    return resolvedActive;
   }, []);
 
   const refreshAll = useCallback(async (options?: { background?: boolean }) => {
@@ -155,12 +291,23 @@ export default function SnippetsPage() {
     if (!user) {
       setError(null);
       setSnippets([]);
+      setWorkspaces([]);
+      setActiveWorkspaceId(null);
       setLoading(false);
       setRefreshing(false);
       return;
     }
 
-    const cached = readCachedSnippets();
+    const resolvedWorkspaceId = await fetchWorkspaces();
+
+    if (!resolvedWorkspaceId) {
+      setSnippets([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    const cached = readCachedSnippets(resolvedWorkspaceId);
     if (isBackground && cached.length > 0) {
       setSnippets(cached);
       setLoading(false);
@@ -172,8 +319,30 @@ export default function SnippetsPage() {
 
     setError(null);
     const controller = new AbortController();
-    await fetchSnippets(controller.signal);
-  }, [checkSession, fetchSnippets]);
+    await fetchSnippets(resolvedWorkspaceId, controller.signal);
+  }, [checkSession, fetchSnippets, fetchWorkspaces]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !activeWorkspaceId) {
+      return;
+    }
+
+    const cached = readCachedSnippets(activeWorkspaceId);
+    if (cached.length > 0) {
+      setSnippets(cached);
+      setLoading(false);
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+      setRefreshing(false);
+    }
+
+    setError(null);
+    const controller = new AbortController();
+    void fetchSnippets(activeWorkspaceId, controller.signal);
+
+    return () => controller.abort();
+  }, [activeWorkspaceId, fetchSnippets, isAuthenticated]);
 
   useEffect(() => {
     void refreshAll({ background: true });
@@ -199,9 +368,21 @@ export default function SnippetsPage() {
 
       const key = event.key.toLowerCase();
 
+      if (key === "/") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
       if (key === "n") {
         event.preventDefault();
         setDialogOpen(true);
+      }
+
+      if (key === "r") {
+        event.preventDefault();
+        showToast("syncing...", "info");
+        void refreshAll({ background: false });
       }
 
       if (key === "?") {
@@ -224,7 +405,7 @@ export default function SnippetsPage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dialogOpen, showShortcuts, search, activeTag]);
+  }, [activeTag, dialogOpen, refreshAll, search, showShortcuts, showToast]);
 
   const allTags = useMemo(() => {
     const unique = new Set<string>();
@@ -237,29 +418,32 @@ export default function SnippetsPage() {
   }, [snippets]);
 
   const filteredSnippets = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
+    const tokens = parseSearchTokens(deferredSearch);
 
     return snippets.filter((snippet) => {
+      if (tokens.pinnedOnly && !snippet.pinned) {
+        return false;
+      }
+
+      if (tokens.tag && !snippet.tags.some((tag) => tag.name === tokens.tag)) {
+        return false;
+      }
+
+      if (tokens.language && snippet.language.toLowerCase() !== tokens.language) {
+        return false;
+      }
+
       if (activeTag && !snippet.tags.some((tag) => tag.name === activeTag)) {
         return false;
       }
 
-      if (!query) {
-        return true;
-      }
-
-      const haystack = [
-        snippet.title,
-        snippet.description,
-        snippet.language,
-        ...snippet.tags.map((tag) => tag.name),
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(query);
+      return snippetMatchesText(snippet, tokens.query);
     });
   }, [activeTag, deferredSearch, snippets]);
+
+  const workspaceById = useMemo(() => {
+    return new Map(workspaces.map((workspace) => [workspace.id, workspace]));
+  }, [workspaces]);
 
   const rowVirtualizer = useVirtualizer({
     count: filteredSnippets.length,
@@ -273,9 +457,16 @@ export default function SnippetsPage() {
       return "sign in first to create snippets";
     }
 
+    if (!activeWorkspaceId) {
+      return "create a workspace first";
+    }
+
     showToast("saving snippet...", "info");
 
-    const { data, error: serviceError } = await createSnippet(draft);
+    const { data, error: serviceError } = await createSnippet({
+      ...draft,
+      workspace_id: activeWorkspaceId,
+    });
 
     if (serviceError) {
       showToast(serviceError, "error");
@@ -287,6 +478,7 @@ export default function SnippetsPage() {
         {
           id: data.id,
           user_id: data.user_id,
+          workspace_id: data.workspace_id,
           title: data.title,
           language: data.language,
           description: data.description,
@@ -300,7 +492,7 @@ export default function SnippetsPage() {
       ];
 
       setSnippets(next);
-      writeCachedSnippets(next);
+      writeCachedSnippets(activeWorkspaceId, next);
       showToast("snippet saved", "success");
     }
 
@@ -325,8 +517,140 @@ export default function SnippetsPage() {
     });
 
     setSnippets(next);
-    writeCachedSnippets(next);
+    writeCachedSnippets(activeWorkspaceId, next);
     showToast(pinned ? "pinned" : "unpinned", "success");
+  }
+
+  async function handleCreateWorkspace() {
+    setWorkspaceEditorMode("create");
+    setWorkspaceNameInput("");
+    setWorkspaceEditorOpen(true);
+  }
+
+  async function handleRenameWorkspace() {
+    if (!activeWorkspaceId) return;
+    if (!activeWorkspace) return;
+
+    setWorkspaceEditorMode("rename");
+    setWorkspaceNameInput(activeWorkspace.name);
+    setWorkspaceEditorOpen(true);
+  }
+
+  async function handleSubmitWorkspaceDialog() {
+    const name = workspaceNameInput.trim();
+    if (!name) {
+      showToast("workspace name is required", "error");
+      return;
+    }
+
+    setWorkspaceBusy(true);
+
+    if (workspaceEditorMode === "create") {
+      const { data, error: serviceError } = await createWorkspace(name);
+      setWorkspaceBusy(false);
+
+      if (serviceError) {
+        showToast(serviceError, "error");
+        return;
+      }
+
+      if (data) {
+        const next = [data, ...workspaces.filter((workspace) => workspace.id !== data.id)];
+        setWorkspaces(next);
+        setActiveWorkspaceId(data.id);
+        setWorkspaceEditorOpen(false);
+        setWorkspaceNameInput("");
+        showToast("workspace created", "success");
+      }
+
+      return;
+    }
+
+    const workspaceId = activeWorkspaceId;
+    if (!workspaceId) {
+      setWorkspaceBusy(false);
+      showToast("select a workspace first", "error");
+      return;
+    }
+
+    const { error: serviceError } = await renameWorkspace(workspaceId, name);
+    setWorkspaceBusy(false);
+
+    if (serviceError) {
+      showToast(serviceError, "error");
+      return;
+    }
+
+    setWorkspaces((current) =>
+      current.map((workspace) =>
+        workspace.id === workspaceId ? { ...workspace, name } : workspace
+      )
+    );
+    setWorkspaceEditorOpen(false);
+    setWorkspaceNameInput("");
+    showToast("workspace renamed", "success");
+  }
+
+  async function handleToggleWorkspaceShare() {
+    if (!activeWorkspace) return;
+
+    setWorkspaceBusy(true);
+    const { error: serviceError } = await toggleWorkspacePublic(activeWorkspace.id, !activeWorkspace.is_public);
+    setWorkspaceBusy(false);
+
+    if (serviceError) {
+      showToast(serviceError, "error");
+      return;
+    }
+
+    setWorkspaces((current) =>
+      current.map((workspace) =>
+        workspace.id === activeWorkspace.id
+          ? { ...workspace, is_public: !workspace.is_public }
+          : workspace
+      )
+    );
+    showToast(activeWorkspace.is_public ? "workspace is now private" : "workspace is now public", "success");
+  }
+
+  async function handleDeleteWorkspace() {
+    if (!activeWorkspace) return;
+
+    if (workspaces.length <= 1) {
+      showToast("you must keep at least one workspace", "error");
+      return;
+    }
+
+    setDeleteWorkspaceOpen(true);
+  }
+
+  async function handleConfirmDeleteWorkspace() {
+    if (!activeWorkspace) {
+      setDeleteWorkspaceOpen(false);
+      return;
+    }
+
+    if (workspaces.length <= 1) {
+      setDeleteWorkspaceOpen(false);
+      showToast("you must keep at least one workspace", "error");
+      return;
+    }
+
+    setWorkspaceBusy(true);
+    const { error: serviceError } = await deleteWorkspace(activeWorkspace.id);
+    setWorkspaceBusy(false);
+
+    if (serviceError) {
+      showToast(serviceError, "error");
+      return;
+    }
+
+    const next = workspaces.filter((workspace) => workspace.id !== activeWorkspace.id);
+    setWorkspaces(next);
+    setActiveWorkspaceId(next[0]?.id ?? null);
+    setSnippets([]);
+    setDeleteWorkspaceOpen(false);
+    showToast("workspace deleted", "success");
   }
 
   async function handleRefresh() {
@@ -379,14 +703,18 @@ export default function SnippetsPage() {
 
   const showAuthPanel =
     !isAuthenticated || Boolean(authError) || Boolean(authMessage);
+  const activeWorkspace = activeWorkspaceId
+    ? (workspaceById.get(activeWorkspaceId) ?? null)
+    : null;
+  const canDeleteWorkspace = workspaces.length > 1;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-8 sm:px-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-8 sm:px-6 motion-safe-enter">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <AppLogo />
           <p className="text-sm text-muted-foreground">
-            quick add with <span className="font-medium">n</span>, save with {" "}
+           quick add with <span className="font-medium">n</span>, save with {" "}
             <span className="font-medium">cmd/ctrl+enter</span>
           </p>
         </div>
@@ -405,7 +733,7 @@ export default function SnippetsPage() {
           <Button
             type="button"
             onClick={() => setDialogOpen(true)}
-            disabled={!isAuthenticated}
+            disabled={!isAuthenticated || !activeWorkspaceId}
           >
             <Plus className="size-4" />
             new snippet
@@ -432,7 +760,72 @@ export default function SnippetsPage() {
 
       <section className="rounded-2xl border border-border/70 bg-card/70 p-3">
         <div className="space-y-3">
-          <SearchBar value={search} onChange={setSearch} />
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/60 p-2">
+            <span className="px-1 text-xs text-muted-foreground">workspace</span>
+            <div className="relative min-w-40 flex-1">
+              <select
+                className="h-8 w-full appearance-none rounded-md border border-input bg-background px-2 pr-8 text-sm text-foreground shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+                value={activeWorkspaceId ?? ""}
+                onChange={(event) => setActiveWorkspaceId(event.target.value || null)}
+                disabled={!isAuthenticated || workspaces.length === 0}
+              >
+                {workspaces.length === 0 ? (
+                  <option value="">no workspaces</option>
+                ) : (
+                  workspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>
+                      {workspace.name}{workspace.is_public ? " (public)" : ""}
+                    </option>
+                  ))
+                )}
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleCreateWorkspace()}
+                disabled={!isAuthenticated || workspaceBusy}
+              >
+                new
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleRenameWorkspace()}
+                disabled={!isAuthenticated || !activeWorkspace || workspaceBusy}
+              >
+                rename
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleToggleWorkspaceShare()}
+                disabled={!isAuthenticated || !activeWorkspace || workspaceBusy}
+              >
+                {activeWorkspace?.is_public ? "private" : "public"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleDeleteWorkspace()}
+                disabled={!isAuthenticated || !activeWorkspace || workspaceBusy || !canDeleteWorkspace}
+              >
+                delete
+              </Button>
+            </div>
+          </div>
+
+          <SearchBar value={search} onChange={setSearch} inputRef={searchInputRef} />
+          <p className="px-1 text-xs text-muted-foreground">
+            power search: <span className="font-mono">tag:react</span>, <span className="font-mono">lang:typescript</span>, <span className="font-mono">is:pinned</span>
+          </p>
           <TagFilter tags={allTags} activeTag={activeTag} onTagChange={setActiveTag} />
         </div>
       </section>
@@ -514,11 +907,107 @@ export default function SnippetsPage() {
         onSave={handleCreate}
       />
 
+      <Dialog
+        open={workspaceEditorOpen}
+        onOpenChange={(open) => {
+          setWorkspaceEditorOpen(open);
+          if (!open) {
+            setWorkspaceNameInput("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl border-border/70">
+          <DialogHeader>
+            <DialogTitle>
+              {workspaceEditorMode === "create" ? "new workspace" : "rename workspace"}
+            </DialogTitle>
+            <DialogDescription>
+              {workspaceEditorMode === "create"
+                ? "create a focused workspace for your snippets"
+                : "update the workspace name"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">workspace name</label>
+            <Input
+              value={workspaceNameInput}
+              onChange={(event) => setWorkspaceNameInput(event.target.value)}
+              placeholder="workspace name"
+              maxLength={80}
+              autoFocus
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleSubmitWorkspaceDialog();
+                }
+              }}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setWorkspaceEditorOpen(false)}
+              disabled={workspaceBusy}
+            >
+              cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSubmitWorkspaceDialog()}
+              disabled={workspaceBusy}
+            >
+              {workspaceEditorMode === "create" ? "create" : "save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteWorkspaceOpen} onOpenChange={setDeleteWorkspaceOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-border/70">
+          <DialogHeader>
+            <DialogTitle>delete workspace</DialogTitle>
+            <DialogDescription>
+              {canDeleteWorkspace
+                ? (
+                  <>
+                    delete <span className="font-medium">{activeWorkspace?.name ?? "workspace"}</span> and all snippets in it. this cannot be undone.
+                  </>
+                )
+                : "you must keep at least one workspace."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteWorkspaceOpen(false)}
+              disabled={workspaceBusy}
+            >
+              cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleConfirmDeleteWorkspace()}
+              disabled={workspaceBusy || !canDeleteWorkspace}
+            >
+              delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ShortcutsPanel
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
         shortcuts={[
+          { key: "/", action: "focus search" },
           { key: "n", action: "new snippet" },
+          { key: "r", action: "refresh snippets" },
           { key: "?", action: "show shortcuts" },
           { key: "esc", action: "close dialog / clear search / clear tag filter" },
         ]}
@@ -526,7 +1015,7 @@ export default function SnippetsPage() {
 
       <FloatingActionButton
         onClick={() => setDialogOpen(true)}
-        disabled={!isAuthenticated}
+        disabled={!isAuthenticated || !activeWorkspaceId}
       />
     </main>
   );

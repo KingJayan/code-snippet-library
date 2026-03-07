@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AccessibilitySettings } from "@/components/accessibility-settings";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -30,19 +32,29 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){
   var root = document.documentElement;
-  var media = window.matchMedia('(prefers-color-scheme: dark)');
-  function applyTheme(){
-    if(media.matches){
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+  var key = 'snips.theme';
+  var stored = null;
+  try { stored = localStorage.getItem(key); } catch (e) {}
+  var next = stored === 'light' || stored === 'dark'
+    ? stored
+    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+  if(next === 'dark'){
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
   }
-  applyTheme();
-  if(media.addEventListener){
-    media.addEventListener('change', applyTheme);
-  } else if(media.addListener){
-    media.addListener(applyTheme);
+
+  if (localStorage.getItem('snips.a11y.reduced-motion') === '1') {
+    root.classList.add('a11y-reduce-motion');
+  }
+
+  if (localStorage.getItem('snips.a11y.larger-text') === '1') {
+    root.classList.add('a11y-large-text');
+  }
+
+  if (localStorage.getItem('snips.a11y.stronger-focus') === '1') {
+    root.classList.add('a11y-strong-focus');
   }
 })();`,
           }}
@@ -54,6 +66,8 @@ export default function RootLayout({
       >
         <TooltipProvider delayDuration={200}>
           {children}
+          <AccessibilitySettings />
+          <ThemeToggle />
         </TooltipProvider>
       </body>
     </html>

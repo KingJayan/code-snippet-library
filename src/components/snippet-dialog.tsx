@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Save } from "lucide-react";
+import { ChevronDown, Loader2, Save } from "lucide-react";
 import { z } from "zod";
 import {
 	Dialog,
@@ -159,17 +159,20 @@ export function SnippetDialog({
 						<div className="grid gap-3 sm:grid-cols-2">
 							<label className="flex flex-col gap-1.5">
 								<span className="text-xs text-muted-foreground">language</span>
-								<select
-									className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									value={draft.language}
-									onChange={(event) => updateField("language", event.target.value)}
-								>
-									{LANGUAGE_OPTIONS.map((language) => (
-										<option key={language.value} value={language.value}>
-											{language.label}
-										</option>
-									))}
-								</select>
+								<div className="relative">
+									<select
+										className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm text-foreground shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+										value={draft.language}
+										onChange={(event) => updateField("language", event.target.value)}
+									>
+										{LANGUAGE_OPTIONS.map((language) => (
+											<option key={language.value} value={language.value}>
+												{language.label}
+											</option>
+										))}
+									</select>
+									<ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
+								</div>
 							</label>
 
 							<label className="flex flex-col gap-1.5">

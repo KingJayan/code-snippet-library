@@ -7,6 +7,7 @@ import type {
   SnippetSummaryWithTags,
   SnippetWithTags,
   Tag,
+  Workspace,
 } from "@/lib/types";
 
 type SnippetRow = Snippet & {
@@ -26,11 +27,14 @@ const MAX_LIST_ITEMS = 200;
 type ListSnippetsOptions = {
   signal?: AbortSignal;
   limit?: number;
+  workspaceId?: string;
 };
 
 type GetSnippetOptions = {
   signal?: AbortSignal;
 };
+
+type WorkspaceRow = Workspace;
 
 function withError<T>(error: unknown): ServiceResult<T> {
   let message =
@@ -82,6 +86,141 @@ function normalizeTags(tagNames: string[]) {
   return [...new Set(tagNames.map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
 }
 
+function normalizeWorkspaceName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+function normalizeWorkspace(row: WorkspaceRow): Workspace {
+  return {
+    id: row.id,
+    owner_id: row.owner_id,
+    name: row.name,
+    is_public: row.is_public,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+export async function listWorkspaces(): Promise<ServiceResult<Workspace[]>> {
+  try {
+    const client = requireClient();
+    await requireUserId(client);
+
+    const { data, error } = await client
+      .from("workspaces")
+      .select("id, owner_id, name, is_public, created_at, updated_at")
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to fetch workspaces");
+    }
+
+    return {
+      data: (data as WorkspaceRow[]).map(normalizeWorkspace),
+      error: null,
+    };
+  } catch (error) {
+    return withError<Workspace[]>(error);
+  }
+}
+
+export async function createWorkspace(name: string): Promise<ServiceResult<Workspace>> {
+  try {
+    const client = requireClient();
+    const userId = await requireUserId(client);
+    const normalizedName = normalizeWorkspaceName(name);
+
+    if (!normalizedName) {
+      throw new Error("workspace name is required");
+    }
+
+    const { data, error } = await client
+      .from("workspaces")
+      .insert({ owner_id: userId, name: normalizedName })
+      .select("id, owner_id, name, is_public, created_at, updated_at")
+      .single();
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to create workspace");
+    }
+
+    return { data: normalizeWorkspace(data as WorkspaceRow), error: null };
+  } catch (error) {
+    return withError<Workspace>(error);
+  }
+}
+
+export async function renameWorkspace(
+  id: string,
+  name: string
+): Promise<ServiceResult<boolean>> {
+  try {
+    const client = requireClient();
+    await requireUserId(client);
+    const normalizedName = normalizeWorkspaceName(name);
+
+    if (!normalizedName) {
+      throw new Error("workspace name is required");
+    }
+
+    const { error } = await client
+      .from("workspaces")
+      .update({ name: normalizedName })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to rename workspace");
+    }
+
+    return { data: true, error: null };
+  } catch (error) {
+    return withError<boolean>(error);
+  }
+}
+
+export async function toggleWorkspacePublic(
+  id: string,
+  isPublic: boolean
+): Promise<ServiceResult<boolean>> {
+  try {
+    const client = requireClient();
+    await requireUserId(client);
+
+    const { error } = await client
+      .from("workspaces")
+      .update({ is_public: isPublic })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to update workspace sharing");
+    }
+
+    return { data: true, error: null };
+  } catch (error) {
+    return withError<boolean>(error);
+  }
+}
+
+export async function deleteWorkspace(id: string): Promise<ServiceResult<boolean>> {
+  try {
+    const client = requireClient();
+    await requireUserId(client);
+
+    const { error } = await client
+      .from("workspaces")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to delete workspace");
+    }
+
+    return { data: true, error: null };
+  } catch (error) {
+    return withError<boolean>(error);
+  }
+}
+
 function normalizeSnippet(row: SnippetRow): SnippetWithTags {
   const tags =
     row.snippet_tags
@@ -97,6 +236,7 @@ function normalizeSnippet(row: SnippetRow): SnippetWithTags {
   return {
     id: row.id,
     user_id: row.user_id,
+    workspace_id: row.workspace_id,
     title: row.title,
     language: row.language,
     description: row.description,
@@ -124,6 +264,7 @@ function normalizeSnippetSummary(row: SnippetSummaryRow): SnippetSummaryWithTags
   return {
     id: row.id,
     user_id: row.user_id,
+    workspace_id: row.workspace_id,
     title: row.title,
     language: row.language,
     description: row.description,
@@ -204,11 +345,15 @@ export async function listSnippets(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .order("pinned", { ascending: false })
       .order("updated_at", { ascending: false })
       .limit(requestedLimit);
+
+    if (options?.workspaceId) {
+      query = query.eq("workspace_id", options.workspaceId);
+    }
 
     if (options?.signal && typeof (query as { abortSignal?: unknown }).abortSignal === "function") {
       query = (query as unknown as { abortSignal: (signal: AbortSignal) => typeof query })
@@ -241,7 +386,7 @@ export async function getSnippetById(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("id", id)
       .single();
@@ -273,16 +418,21 @@ export async function createSnippet(
     const client = requireClient();
     const userId = await requireUserId(client);
 
+    if (!draft.workspace_id) {
+      throw new Error("workspace is required");
+    }
+
     const { data, error } = await client
       .from("snippets")
       .insert({
         user_id: userId,
+        workspace_id: draft.workspace_id,
         title: draft.title.trim(),
         language: draft.language,
         description: draft.description.trim(),
         code: draft.code,
       })
-      .select("id, user_id, title, language, description, code, pinned, public, created_at, updated_at")
+      .select("id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at")
       .single();
 
     if (error) {
@@ -334,7 +484,7 @@ export async function updateSnippet(
       })
       .eq("id", id)
       .eq("user_id", userId)
-      .select("id, user_id, title, language, description, code, pinned, public, created_at, updated_at")
+      .select("id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at")
       .single();
 
     if (error) {
@@ -462,7 +612,7 @@ export async function listPublicSnippets(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("public", true)
       .order("pinned", { ascending: false })
@@ -498,7 +648,7 @@ export async function getPublicSnippetById(
     const { data, error } = await client
       .from("snippets")
       .select(
-        "id, user_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("id", id)
       .eq("public", true)

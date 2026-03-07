@@ -86,7 +86,7 @@ export default function PublicSnippetsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background" onKeyDown={handleKeyDown}>
+    <div className="flex min-h-screen flex-col bg-background motion-safe-enter" onKeyDown={handleKeyDown}>
       <header className="sticky top-0 border-b border-border/60 bg-background/95 backdrop-blur-sm">
         <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
           <div className="mb-4 flex items-center justify-between">
@@ -105,7 +105,7 @@ export default function PublicSnippetsPage() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 animate-subtle-fade-up">
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
           {allTags.length > 0 && (
             <div className="mb-6">

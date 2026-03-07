@@ -17,8 +17,10 @@ import {
   Share2,
   Globe,
   Lock,
+  PanelRightOpen,
 } from "lucide-react";
 import { InlineToast, type ToastTone } from "@/components/inline-toast";
+import { AiChatSidebar } from "@/components/ai-chat-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/code-block";
@@ -86,6 +88,9 @@ export default function SnippetDetailPage() {
   const [shareState, setShareState] = useState<"idle" | "done" | "failed">("idle");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTone, setToastTone] = useState<ToastTone>("info");
+  const [aiCodeOverride, setAiCodeOverride] = useState<string | null>(null);
+  const [aiChatMinimized, setAiChatMinimized] = useState(false);
+  const [renderAiChat, setRenderAiChat] = useState(true);
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
 
@@ -188,6 +193,19 @@ export default function SnippetDetailPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [copyCode, snippet]);
 
+  useEffect(() => {
+    if (!aiChatMinimized) {
+      setRenderAiChat(true);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setRenderAiChat(false);
+    }, 240);
+
+    return () => window.clearTimeout(timeout);
+  }, [aiChatMinimized]);
+
   async function handleDelete() {
     if (!snippet || deleting) return;
 
@@ -229,9 +247,16 @@ export default function SnippetDetailPage() {
     if (data) {
       writeCachedSnippet(data);
     }
+    setAiCodeOverride(null);
 
     showToast("changes saved", "success");
     return null;
+  }
+
+  function applyAiCodeSuggestion(nextCode: string) {
+    setAiCodeOverride(nextCode);
+    setEditOpen(true);
+    showToast("ai suggestion loaded into editor", "success");
   }
 
   async function handleTogglePin() {
@@ -480,13 +505,55 @@ export default function SnippetDetailPage() {
         )}
       </header>
 
-      <CodeBlock code={snippet.code} language={snippet.language} />
+      <section className={renderAiChat ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]" : "space-y-3"}>
+        <div className="space-y-3">
+          {aiChatMinimized && (
+            <div className="flex justify-end animate-subtle-fade-up">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="transition-all duration-200 ease-out"
+                onClick={() => {
+                  setRenderAiChat(true);
+                  setAiChatMinimized(false);
+                }}
+              >
+                <PanelRightOpen className="size-4" />
+                open ai chat
+              </Button>
+            </div>
+          )}
+          <CodeBlock code={snippet.code} language={snippet.language} />
+        </div>
+
+        {renderAiChat && (
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-out ${
+              aiChatMinimized
+                ? "pointer-events-none max-h-0 translate-y-2 opacity-0"
+                : "max-h-[1400px] translate-y-0 opacity-100"
+            }`}
+          >
+            <AiChatSidebar
+              snippet={snippet}
+              onApplyCode={applyAiCodeSuggestion}
+              onMinimize={() => setAiChatMinimized(true)}
+            />
+          </div>
+        )}
+      </section>
 
       <SnippetDialog
-        key={`${snippet.id}-${editOpen ? "edit-open" : "edit-closed"}`}
+        key={`${snippet.id}-${editOpen ? "edit-open" : "edit-closed"}-${aiCodeOverride ? aiCodeOverride.length : 0}`}
         open={editOpen}
-        onOpenChange={setEditOpen}
-        initialSnippet={snippet}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) {
+            setAiCodeOverride(null);
+          }
+        }}
+        initialSnippet={aiCodeOverride ? { ...snippet, code: aiCodeOverride } : snippet}
         onSave={handleEdit}
       />
     </main>

@@ -31,8 +31,8 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
     <Link
       href={`/snippets/${snippet.id}`}
       className="group relative flex flex-col gap-3 rounded-lg border border-border/60
-                 bg-card p-4 transition-all duration-150
-                 hover:border-foreground/20 hover:shadow-sm
+                 bg-card p-4 transition-all duration-200 ease-out motion-safe-enter
+                 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       tabIndex={0}
       title={snippet.title}

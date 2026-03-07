@@ -136,7 +136,7 @@ export default function PublicSnippetPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-8 motion-safe-enter">
       <section className="sticky top-3 z-20 rounded-xl border border-border/70 bg-card/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/70">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link href="/snippets" className="text-sm text-muted-foreground hover:text-foreground">
