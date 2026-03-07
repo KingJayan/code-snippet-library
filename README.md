@@ -1,6 +1,6 @@
 # code snippet library
 
-minimal, fast personal snippet vault built with next.js, supabase, shadcn ui, and shiki.
+minimal, fast personal (and shared) snippet vault built with next.js, supabase, shadcn ui, and shiki.
 
 ## features
 
@@ -9,12 +9,17 @@ minimal, fast personal snippet vault built with next.js, supabase, shadcn ui, an
 - switch code themes (github-dark, github-light, dracula, nord, monokai, one-dark-pro)
 - tag-based filtering with search (duplicate tags auto-removed, 30 char max)
 - magic link authentication with session expiry handling
+- production-safe magic link redirect resolution (supports deployed app url)
 - keyboard shortcuts for quick actions (n, ?, esc)
 - snippet code preview on hover (first line in tooltip)
 - virtualized list for performance
 - loading skeletons for smoother ux
 - public snippets discovery page at `/public`
 - mobile-friendly floating action button
+- ai coding assistant sidebar on snippet detail pages (hidden in public view)
+- multi-provider ai support with mode-aware prompts (`improve`, `refactor`, `debug`, `explain`)
+- optional ai similarity search (default off), ai auto-tagging, and ai docs generation
+- unified settings with a11y controls
 
 ## stack
 
@@ -22,6 +27,7 @@ minimal, fast personal snippet vault built with next.js, supabase, shadcn ui, an
 - tailwind css + shadcn ui
 - supabase (postgres + auth)
 - shiki for syntax highlighting
+- modular ai provider adapters (openai, anthropic, gemini, ollama, openrouter, openai-compatible, puter)
 
 ## setup
 
@@ -36,6 +42,17 @@ npm install
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+NEXT_PUBLIC_APP_URL=https://your-production-domain.com
+```
+
+optional ai env vars (you can also provide keys in the ui):
+
+```env
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+OPENROUTER_API_KEY=
+OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 3. run sql schema in supabase sql editor
@@ -88,6 +105,19 @@ npm run dev
 - search by title, language, or tags
 - filter by tags for discovery
 - credit to snippet creators in footer
+- no ai sidebar/chat is shown in public snippet view
+
+**ai assistant**
+- open the ai panel on snippet detail page
+- choose provider, model, and mode (`improve`, `refactor`, `debug`, `explain`)
+- ask for changes, then apply suggested code directly into the editor
+- generate tags and docs from snippet content in the snippet dialog
+- enable similarity search from settings to find related snippets by intent
+
+**settings**
+- open settings from the header action
+- switch between `ai`, `prefs`, and `a11y` in the mini vertical nav
+- preferences include compact layout, hint visibility, code wrapping, and default code theme
 
 **themes**
 - click palette icon on code blocks to switch syntax themes
@@ -113,6 +143,12 @@ npm run dev
 ```bash
 npm run lint
 npx tsc --noEmit
+npm run build
 ```
+
+## deploy
+
+- includes `vercel.json` and `.vercelignore` for vercel deployment
+- make sure supabase auth url config includes your production domain/callbacks
 
 ### made with :) by jayan
