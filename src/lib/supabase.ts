@@ -13,6 +13,36 @@ export const supabase = isSupabaseConfigured
 	? createClient(supabaseUrl as string, supabasePublishableKey as string)
 	: null;
 
+function normalizeBaseUrl(url: string) {
+	return url.trim().replace(/\/$/, "");
+}
+
+function getMagicLinkRedirectUrl() {
+	const configuredBaseUrl =
+		process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
+
+	if (typeof window !== "undefined") {
+		const origin = window.location.origin;
+		const hostname = window.location.hostname;
+
+		if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+			return `${normalizeBaseUrl(origin)}/snippets`;
+		}
+
+		if (configuredBaseUrl) {
+			return `${normalizeBaseUrl(configuredBaseUrl)}/snippets`;
+		}
+
+		return `${normalizeBaseUrl(origin)}/snippets`;
+	}
+
+	if (configuredBaseUrl) {
+		return `${normalizeBaseUrl(configuredBaseUrl)}/snippets`;
+	}
+
+	return undefined;
+}
+
 export async function getCurrentUser() {
 	if (!supabase) return null;
 
@@ -36,10 +66,7 @@ export async function sendMagicLink(email: string) {
 	const { error } = await supabase.auth.signInWithOtp({
 		email,
 		options: {
-			emailRedirectTo:
-				typeof window !== "undefined"
-					? `${window.location.origin}/snippets`
-					: undefined,
+			emailRedirectTo: getMagicLinkRedirectUrl(),
 		},
 	});
 
