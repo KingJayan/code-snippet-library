@@ -9,13 +9,14 @@ import {
   useState,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Plus, RefreshCw, Code2, ChevronDown } from "lucide-react";
+import { Plus, RefreshCw, Code2, Keyboard, Search, Loader2 } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 import { AuthPanel } from "@/components/auth-panel";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { ShortcutsPanel } from "@/components/shortcuts-panel";
 import { UserChip } from "@/components/user-chip";
+import { WorkspaceSideNav } from "@/components/workspace-side-nav";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -461,6 +462,22 @@ export default function SnippetsPage() {
     return new Map(workspaces.map((workspace) => [workspace.id, workspace]));
   }, [workspaces]);
 
+  const workspacePinnedTitles = useMemo(() => {
+    const titlesByWorkspace: Record<string, string[]> = {};
+
+    for (const snippet of snippets) {
+      if (!snippet.pinned || !snippet.workspace_id) continue;
+
+      const title = snippet.title.trim() || "untitled";
+      const current = titlesByWorkspace[snippet.workspace_id] ?? [];
+      if (current.length < 3) {
+        titlesByWorkspace[snippet.workspace_id] = [...current, title];
+      }
+    }
+
+    return titlesByWorkspace;
+  }, [snippets]);
+
   const rowVirtualizer = useVirtualizer({
     count: filteredSnippets.length,
     getScrollElement: () => listParentRef.current,
@@ -724,16 +741,60 @@ export default function SnippetsPage() {
     : null;
   const canDeleteWorkspace = workspaces.length > 1;
 
+  const workspaceUtilities = [
+    {
+      id: "new",
+      label: "new",
+      onClick: () => void handleCreateWorkspace(),
+      disabled: !isAuthenticated || workspaceBusy,
+    },
+    {
+      id: "rename",
+      label: "rename",
+      onClick: () => void handleRenameWorkspace(),
+      disabled: !isAuthenticated || !activeWorkspace || workspaceBusy,
+    },
+    {
+      id: "share",
+      label: activeWorkspace?.is_public ? "make private" : "make public",
+      onClick: () => void handleToggleWorkspaceShare(),
+      disabled: !isAuthenticated || !activeWorkspace || workspaceBusy,
+    },
+    {
+      id: "delete",
+      label: "delete",
+      onClick: () => void handleDeleteWorkspace(),
+      disabled: !isAuthenticated || !activeWorkspace || workspaceBusy || !canDeleteWorkspace,
+      destructive: true,
+    },
+  ];
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-8 sm:px-6 motion-safe-enter">
+      <WorkspaceSideNav
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId}
+        onSelectWorkspace={(workspaceId) => setActiveWorkspaceId(workspaceId)}
+        canSelect={isAuthenticated}
+        actions={workspaceUtilities}
+        workspacePinnedTitles={workspacePinnedTitles}
+        showPublicLink
+      />
+
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <AppLogo />
           {showHints && (
-            <p className="text-sm text-muted-foreground">
-              quick add with <span className="font-medium">n</span>, save with {" "}
-              <span className="font-medium">cmd/ctrl+enter</span>
-            </p>
+            <div className="inline-flex items-center gap-2">
+              <span
+                className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+                title="quick add with n, save with cmd/ctrl+enter"
+                aria-hidden="true"
+              >
+                <Keyboard className="size-3.5" />
+              </span>
+              <span className="sr-only">quick add with n, save with cmd/ctrl+enter</span>
+            </div>
           )}
         </div>
 
@@ -776,75 +837,20 @@ export default function SnippetsPage() {
         />
       )}
 
-      <section className="rounded-2xl border border-border/70 bg-card/70 p-3">
+      <section className="rounded-2xl border border-border/70 bg-card/70 p-3 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/60 p-2">
-            <span className="px-1 text-xs text-muted-foreground">workspace</span>
-            <div className="relative min-w-40 flex-1">
-              <select
-                className="h-8 w-full appearance-none rounded-md border border-input bg-background px-2 pr-8 text-sm text-foreground shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-                value={activeWorkspaceId ?? ""}
-                onChange={(event) => setActiveWorkspaceId(event.target.value || null)}
-                disabled={!isAuthenticated || workspaces.length === 0}
-              >
-                {workspaces.length === 0 ? (
-                  <option value="">no workspaces</option>
-                ) : (
-                  workspaces.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id}>
-                      {workspace.name}{workspace.is_public ? " (public)" : ""}
-                    </option>
-                  ))
-                )}
-              </select>
-              <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
-
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void handleCreateWorkspace()}
-                disabled={!isAuthenticated || workspaceBusy}
-              >
-                new
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void handleRenameWorkspace()}
-                disabled={!isAuthenticated || !activeWorkspace || workspaceBusy}
-              >
-                rename
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void handleToggleWorkspaceShare()}
-                disabled={!isAuthenticated || !activeWorkspace || workspaceBusy}
-              >
-                {activeWorkspace?.is_public ? "private" : "public"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void handleDeleteWorkspace()}
-                disabled={!isAuthenticated || !activeWorkspace || workspaceBusy || !canDeleteWorkspace}
-              >
-                delete
-              </Button>
-            </div>
-          </div>
-
           <SearchBar value={search} onChange={setSearch} inputRef={searchInputRef} />
           {showHints && (
-            <p className="px-1 text-xs text-muted-foreground">
-              power search: <span className="font-mono">tag:react</span>, <span className="font-mono">lang:typescript</span>, <span className="font-mono">is:pinned</span>
-            </p>
+            <div className="px-1 inline-flex items-center gap-2">
+              <span
+                className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+                title="power search supports tag, language, and pinned filters"
+                aria-hidden="true"
+              >
+                <Search className="size-3" />
+              </span>
+              <span className="sr-only">power search supports tag, language, and pinned filters</span>
+            </div>
           )}
           <TagFilter tags={allTags} activeTag={activeTag} onTagChange={setActiveTag} />
         </div>
@@ -865,7 +871,16 @@ export default function SnippetsPage() {
 
       {loading ? (
         <section className="grid gap-3" aria-live="polite">
-          <p className="text-sm text-muted-foreground">loading snippets...</p>
+          <div className="inline-flex items-center">
+            <span
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+              title="loading snippets"
+              aria-hidden="true"
+            >
+              <Loader2 className="size-3.5 animate-spin" />
+            </span>
+            <span className="sr-only">loading snippets</span>
+          </div>
           {Array.from({ length: 6 }).map((_, idx) => (
             <div
               key={idx}
@@ -879,6 +894,18 @@ export default function SnippetsPage() {
           <h2 className="mt-4 text-sm font-medium">
             {snippets.length === 0 ? "no snippets yet" : "no snippets found"}
           </h2>
+          <div className="mt-1 inline-flex items-center justify-center">
+            <span
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+              title={snippets.length === 0 ? "press n to create your first snippet" : "adjust search or filters"}
+              aria-hidden="true"
+            >
+              {snippets.length === 0 ? <Keyboard className="size-3.5" /> : <Search className="size-3.5" />}
+            </span>
+            <span className="sr-only">
+              {snippets.length === 0 ? "press n to create your first snippet" : "adjust search/filter or add a new snippet"}
+            </span>
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {snippets.length === 0 ? (
               <>
@@ -892,7 +919,7 @@ export default function SnippetsPage() {
       ) : (
         <section
           ref={listParentRef}
-          className="h-[62vh] overflow-y-auto rounded-2xl border border-border/70 bg-card/30 p-2"
+          className="h-[62vh] overflow-y-auto rounded-2xl border border-border/70 bg-card/30 p-2 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow"
         >
           <div
             className="relative w-full"

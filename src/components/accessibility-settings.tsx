@@ -197,7 +197,7 @@ export function AccessibilitySettings() {
               </div>
             </nav>
 
-            <div className="min-h-0 overflow-y-auto p-4">
+            <div className="min-h-0 overflow-y-auto theme-scrollbar p-4">
               {activeGroup === "ai" && (
                 <section className="space-y-2">
                   <button

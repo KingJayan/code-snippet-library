@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AccessibilitySettings } from "@/components/accessibility-settings";
+import { DevDebugPanel } from "@/components/dev-debug-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { VfxCursorTracker } from "@/components/vfx-cursor-tracker";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -69,7 +71,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <TooltipProvider delayDuration={200}>
+          <VfxCursorTracker />
           {children}
+          <DevDebugPanel />
           <AccessibilitySettings />
           <ThemeToggle />
         </TooltipProvider>

@@ -125,10 +125,19 @@ const MODE_OPTIONS: Array<{ value: ChatMode; label: string }> = [
   { value: "explain", label: "explain" },
 ];
 const MODE_VALUES = MODE_OPTIONS.map((option) => option.value);
+const MAX_CHAT_MESSAGES = 24;
+
+function trimMessages(messages: ChatMessage[]) {
+  if (messages.length <= MAX_CHAT_MESSAGES) {
+    return messages;
+  }
+
+  return messages.slice(messages.length - MAX_CHAT_MESSAGES);
+}
 
 let puterScriptPromise: Promise<void> | null = null;
 
-async function ensurePuterScriptLoaded() {
+async function isPuterLoaded() {
   if (typeof window === "undefined") {
     throw new Error("puterjs is only available in the browser");
   }
@@ -255,7 +264,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [puterAuthBlocked, setPuterAuthBlocked] = useState(false);
+  const [puterAuthBlocked, setPuterBlocked] = useState(false);
 
   const providerDetails = useMemo(() => getProviderById(provider), [provider]);
   const providerModels = useMemo(() => PROVIDER_MODELS[provider] ?? [], [provider]);
@@ -321,7 +330,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
     setError(null);
     setLoading(true);
 
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+    const nextMessages: ChatMessage[] = trimMessages([...messages, { role: "user", content: text }]);
     setMessages(nextMessages);
     setPrompt("");
 
@@ -333,7 +342,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
           return;
         }
 
-        await ensurePuterScriptLoaded();
+        await isPuterLoaded();
 
         const result = await window.puter?.ai?.chat?.(
           buildPuterPrompt(nextMessages, snippet, mode),
@@ -347,8 +356,8 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
           return;
         }
 
-        setPuterAuthBlocked(false);
-        setMessages((current) => [...current, { role: "assistant", content: reply }]);
+        setPuterBlocked(false);
+        setMessages((current) => trimMessages([...current, { role: "assistant", content: reply }]));
         return;
       }
 
@@ -384,13 +393,13 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
         return;
       }
 
-      setMessages((current) => [...current, { role: "assistant", content: payload.reply ?? "" }]);
+      setMessages((current) => trimMessages([...current, { role: "assistant", content: payload.reply ?? "" }]));
     } catch (requestError) {
       if (provider === "puterjs") {
         const message = toPuterErrorMessage(requestError);
         setError(message);
         if (message.includes("authenticated puter session")) {
-          setPuterAuthBlocked(true);
+          setPuterBlocked(true);
         }
       } else {
         setError(requestError instanceof Error ? requestError.message : "chat request failed");
@@ -417,7 +426,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
   }
 
   return (
-    <aside className="flex h-full min-h-[520px] flex-col rounded-2xl border border-border/70 bg-card/70 animate-subtle-pop-in">
+    <aside className="flex h-full min-h-[520px] flex-col rounded-2xl border border-border/70 bg-card/70 animate-subtle-pop-in vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
       <header className="border-b border-border/70 p-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">

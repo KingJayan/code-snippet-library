@@ -6,9 +6,10 @@ import { SnippetCard } from "@/components/snippet-card";
 import { SearchBar } from "@/components/search-bar";
 import { TagFilter } from "@/components/tag-filter";
 import { InlineToast } from "@/components/inline-toast";
+import { WorkspaceSideNav } from "@/components/workspace-side-nav";
 import { listPublicSnippets } from "@/lib/snippet-service";
 import type { SnippetSummaryWithTags } from "@/lib/types";
-import { Code2 } from "lucide-react";
+import { ArrowUpRight, Code2, Compass } from "lucide-react";
 
 export default function PublicSnippetsPage() {
   const [snippets, setSnippets] = useState<SnippetSummaryWithTags[]>([]);
@@ -57,6 +58,9 @@ export default function PublicSnippetsPage() {
         const result = await listPublicSnippets({ signal: controller.signal });
 
         if (result.error) {
+          if (/abort|aborted/i.test(result.error)) {
+            return;
+          }
           setToast({ message: result.error, tone: "error" });
           return;
         }
@@ -87,18 +91,29 @@ export default function PublicSnippetsPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background motion-safe-enter" onKeyDown={handleKeyDown}>
-      <header className="sticky top-0 border-b border-border/60 bg-background/95 backdrop-blur-sm">
+      <WorkspaceSideNav compactSnipsOnly snippetsHref="/snips" showPublicLink={false} showSnippetsLink />
+
+      <header className="sticky top-0 border-b border-border/60 bg-background/95 backdrop-blur-sm vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-semibold">public snippets</h1>
-              <p className="text-sm text-muted-foreground">browse and discover</p>
+              <div
+                className="mt-1 inline-flex size-5 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+                title="browse and discover"
+                aria-hidden="true"
+              >
+                <Compass className="size-3" />
+              </div>
+              <span className="sr-only">browse and discover</span>
             </div>
             <Link
               href="/snippets"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground animate-subtle-pop-in vfx-icon-chip"
+              title="create your own"
+              aria-label="create your own"
             >
-              create your own →
+              <ArrowUpRight className="size-4" />
             </Link>
           </div>
           <SearchBar value={search} onChange={setSearch} />
@@ -156,15 +171,24 @@ export default function PublicSnippetsPage() {
       </main>
 
       <footer className="border-t border-border/60 bg-muted/30 py-6 text-center text-sm text-muted-foreground">
-        <p>
-          interested in building your own snippet vault?{" "}
+        <div className="flex items-center justify-center gap-2">
           <Link
-            href="https://github.com/jayanp/code-snippet-library"
-            className="text-foreground underline transition-colors hover:no-underline"
+            href="https://github.com/kingjayan/code-snippet-library"
+            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground animate-subtle-pop-in vfx-icon-chip"
+            title="see the code"
+            aria-label="see the code"
           >
-            fork this project
+            <Code2 className="size-4" />
           </Link>
-        </p>
+          <Link
+            href="https://github.com/kingjayan/code-snippet-library"
+            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground animate-subtle-pop-in vfx-icon-chip"
+            title="contribute"
+            aria-label="contribute"
+          >
+            <ArrowUpRight className="size-4" />
+          </Link>
+        </div>
       </footer>
 
       {toast && (

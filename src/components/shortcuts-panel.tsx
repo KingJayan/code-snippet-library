@@ -18,7 +18,7 @@ export function ShortcutsPanel({ open, onClose, shortcuts }: ShortcutsPanelProps
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border/70 bg-card/95 p-6 shadow-lg"
+        className="w-full max-w-md rounded-2xl border border-border/70 bg-card/95 p-6 shadow-lg vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

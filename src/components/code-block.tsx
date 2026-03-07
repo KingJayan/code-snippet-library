@@ -7,6 +7,24 @@ import { LANGUAGES } from "@/lib/constants";
 import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 
 const HIGHLIGHT_CACHE = new Map<string, string>();
+const MAX_HIGHLIGHT_CACHE_ENTRIES = 120;
+
+function setHighlightCache(key: string, html: string) {
+	if (HIGHLIGHT_CACHE.has(key)) {
+		HIGHLIGHT_CACHE.delete(key);
+	}
+
+	HIGHLIGHT_CACHE.set(key, html);
+
+	if (HIGHLIGHT_CACHE.size <= MAX_HIGHLIGHT_CACHE_ENTRIES) {
+		return;
+	}
+
+	const oldestKey = HIGHLIGHT_CACHE.keys().next().value;
+	if (typeof oldestKey === "string") {
+		HIGHLIGHT_CACHE.delete(oldestKey);
+	}
+}
 
 const THEMES = [
   { value: "github-dark", label: "github dark" },
@@ -57,11 +75,20 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 	const [theme, setTheme] = useState<Theme>("github-dark");
 	const [showThemes, setShowThemes] = useState(false);
 	const [wrapLines, setWrapLines] = useState(false);
+	const [copyResetTimer, setCopyResetTimer] = useState<number | null>(null);
 
 	useEffect(() => {
 		setTheme(getStoredTheme());
 		setWrapLines(readBoolSetting(SETTINGS_KEYS.wrapCodeLines));
 	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (copyResetTimer !== null) {
+				window.clearTimeout(copyResetTimer);
+			}
+		};
+	}, [copyResetTimer]);
 
 	useEffect(() => {
 		function handleSettingsChange(event: Event) {
@@ -128,7 +155,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 				});
 
 				if (!cancelled) {
-					HIGHLIGHT_CACHE.set(cacheKey, output);
+					setHighlightCache(cacheKey, output);
 					setHtml(output);
 				}
 			} catch {
@@ -152,18 +179,22 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 	}
 
 	async function copyCode() {
+		if (copyResetTimer !== null) {
+			window.clearTimeout(copyResetTimer);
+		}
+
 		try {
 			await navigator.clipboard.writeText(code);
 			setCopyState("done");
-			setTimeout(() => setCopyState("idle"), 1200);
+			setCopyResetTimer(window.setTimeout(() => setCopyState("idle"), 1200));
 		} catch {
 			setCopyState("failed");
-			setTimeout(() => setCopyState("idle"), 1200);
+			setCopyResetTimer(window.setTimeout(() => setCopyState("idle"), 1200));
 		}
 	}
 
 	return (
-		<section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xs">
+		<section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xs vfx-surface vfx-sheen vfx-edge-light vfx-float-shadow">
 			<div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
 				<span className="font-mono text-xs text-zinc-300">{language}</span>
 				<div className="flex items-center gap-1">

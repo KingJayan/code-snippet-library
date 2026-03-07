@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,10 +24,29 @@ export function InlineToast({
   const [activeTone, setActiveTone] = useState<ToastTone>(tone);
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(100);
+  const [mounted, setMounted] = useState(false);
   const frameRef = useRef<number | null>(null);
+  const hideTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      setMounted(false);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (message) {
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+
       setActiveMessage(message);
       setActiveTone(tone);
       setVisible(true);
@@ -52,12 +72,16 @@ export function InlineToast({
     }
 
     setVisible(false);
-    const timeout = window.setTimeout(() => {
+    hideTimeoutRef.current = window.setTimeout(() => {
       setActiveMessage(null);
       setProgress(100);
     }, EXIT_MS);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+    };
   }, [activeMessage, message, tone]);
 
   if (!activeMessage) {
@@ -71,11 +95,19 @@ export function InlineToast({
         ? AlertCircle
         : Info;
 
-  return (
-    <div className="pointer-events-none fixed right-4 bottom-4 z-[70]" aria-live="polite">
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed right-4 z-[70]"
+      style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+      aria-live="polite"
+    >
       <div
         className={cn(
-          "pointer-events-auto min-w-60 max-w-[min(92vw,24rem)] overflow-hidden rounded-lg border shadow-lg backdrop-blur transition-all duration-300 ease-out",
+          "pointer-events-auto min-w-60 max-w-[min(92vw,24rem)] max-h-[min(40vh,14rem)] overflow-hidden rounded-lg border shadow-lg backdrop-blur transition-all duration-300 ease-out",
           visible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
           activeTone === "success" && "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
           activeTone === "error" && "border-destructive/30 bg-destructive/10 text-destructive",
@@ -83,9 +115,9 @@ export function InlineToast({
         )}
         role="status"
       >
-        <div className="flex items-start gap-2 px-3 py-2.5 text-xs">
+        <div className="flex max-h-[calc(min(40vh,14rem)-0.25rem)] items-start gap-2 overflow-y-auto px-3 py-2.5 text-xs theme-scrollbar">
           <Icon className="mt-0.5 size-3.5 shrink-0" />
-          <span className="leading-relaxed">{activeMessage}</span>
+          <span className="leading-relaxed break-words">{activeMessage}</span>
         </div>
         <div className="h-1 w-full bg-black/10 dark:bg-white/10">
           <div
@@ -102,6 +134,7 @@ export function InlineToast({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

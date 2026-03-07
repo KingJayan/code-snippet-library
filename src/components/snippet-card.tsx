@@ -31,7 +31,7 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
     <Link
       href={`/snippets/${snippet.id}`}
       className="snippet-card-shell group relative flex flex-col gap-3 rounded-lg border border-border/60
-                 bg-card p-4 transition-all duration-200 ease-out motion-safe-enter
+                 bg-card p-4 transition-all duration-200 ease-out motion-safe-enter vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow
                  hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       tabIndex={0}
@@ -54,7 +54,7 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             onClick={handlePinClick}
-            className={`rounded p-1 transition-colors hover:bg-accent ${
+            className={`vfx-icon-chip rounded p-1 transition-colors hover:bg-accent ${
               snippet.pinned ? "text-yellow-500" : "text-muted-foreground"
             }`}
             aria-label={snippet.pinned ? "unpin" : "pin"}

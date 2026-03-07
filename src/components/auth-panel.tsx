@@ -37,7 +37,7 @@ export function AuthPanel({
 
   if (authLoading) {
     return (
-      <section className="rounded-2xl border border-border/70 bg-card/70 p-4">
+      <section className="rounded-2xl border border-border/70 bg-card/70 p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="space-y-3">
           <div className="h-4 w-32 animate-pulse rounded bg-muted" />
           <div className="h-3 w-48 animate-pulse rounded bg-muted" />
@@ -51,14 +51,27 @@ export function AuthPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card/70 p-4">
+    <section className="rounded-2xl border border-border/70 bg-card/70 p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
       <div className="space-y-1">
         <h2 className="text-sm font-medium">authentication</h2>
-        <p className="text-xs text-muted-foreground">
-          {isAuthenticated
-            ? "session active"
-            : "sign in with magic link to access your snippets"}
-        </p>
+        <div className="inline-flex items-center gap-1">
+          <span
+            className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+            title={
+              isAuthenticated
+                ? "session active"
+                : "sign in with magic link to access your snippets"
+            }
+            aria-hidden="true"
+          >
+            {isAuthenticated ? <RefreshCw className="size-3" /> : <Mail className="size-3" />}
+          </span>
+          <span className="sr-only">
+            {isAuthenticated
+              ? "session active"
+              : "sign in with magic link to access your snippets"}
+          </span>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

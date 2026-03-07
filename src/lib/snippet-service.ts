@@ -37,6 +37,13 @@ type GetSnippetOptions = {
 type WorkspaceRow = Workspace;
 
 function withError<T>(error: unknown): ServiceResult<T> {
+  if (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && /abort|aborted/i.test(error.message))
+  ) {
+    return { data: null, error: null };
+  }
+
   let message =
     error instanceof Error
       ? error.message

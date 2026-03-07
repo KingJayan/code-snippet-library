@@ -1,4 +1,6 @@
 
+import { Code2 } from "lucide-react";
+
 export function AppLogo() {
   return (
     <div className="inline-flex items-center gap-2 select-none group">
@@ -24,7 +26,14 @@ export function AppLogo() {
       </div>
       <div className="leading-tight">
         <p className="text-sm font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">Snips</p>
-        <p className="text-[10px] text-muted-foreground font-medium">Code Library</p>
+        <div
+          className="mt-0.5 inline-flex size-4 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
+          title="Code Library"
+          aria-hidden="true"
+        >
+          <Code2 className="size-3" />
+        </div>
+        <span className="sr-only">Code Library</span>
       </div>
     </div>
   );

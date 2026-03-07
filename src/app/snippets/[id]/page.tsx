@@ -368,7 +368,8 @@ export default function SnippetDetailPage() {
 
     try {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-      const url = snippet.public ? `${baseUrl}/public/${snippet.id}` : window.location.href;
+      const detailPath = `/snippets/${snippet.id}`;
+      const url = snippet.public ? `${baseUrl}/public/${snippet.id}` : `${baseUrl}${detailPath}`;
       await navigator.clipboard.writeText(url);
       setShareState("done");
       showToast(snippet.public ? "public link copied" : "link copied", "success");
@@ -483,7 +484,7 @@ export default function SnippetDetailPage() {
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-8">
       <InlineToast message={toastMessage} tone={toastTone} />
 
-      <section className="sticky top-3 z-20 rounded-xl border border-border/70 bg-card/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+      <section className="sticky top-3 z-20 rounded-xl border border-border/70 bg-card/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/70 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link href="/snippets" className="text-sm text-muted-foreground hover:text-foreground">
             <span className="inline-flex items-center gap-1">
@@ -553,7 +554,7 @@ export default function SnippetDetailPage() {
         </div>
       </section>
 
-      <header className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
+      <header className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2 flex-1">
             <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
@@ -610,7 +611,7 @@ export default function SnippetDetailPage() {
           <CodeBlock code={snippet.code} language={snippet.language} />
 
           {similarityEnabled && (
-            <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up">
+            <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold tracking-tight">ai similar snippets</h2>
                 <Button

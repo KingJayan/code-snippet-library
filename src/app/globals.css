@@ -49,6 +49,12 @@
 
 :root {
   --radius: 0.625rem;
+  --cursor-x: 50vw;
+  --cursor-y: 30vh;
+  --vfx-highlight: rgb(255 255 255 / 0.5);
+  --vfx-shadow: rgb(0 0 0 / 0.12);
+  --vfx-shadow-strong: rgb(0 0 0 / 0.18);
+  --vfx-sheen: rgb(255 255 255 / 0.2);
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -83,6 +89,10 @@
 }
 
 .dark {
+  --vfx-highlight: rgb(255 255 255 / 0.12);
+  --vfx-shadow: rgb(0 0 0 / 0.36);
+  --vfx-shadow-strong: rgb(0 0 0 / 0.48);
+  --vfx-sheen: rgb(255 255 255 / 0.08);
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.21 0.006 285.885);
@@ -173,6 +183,74 @@
     animation: subtle-pop-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .vfx-surface {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+  }
+
+  .vfx-sheen {
+    overflow: hidden;
+  }
+
+  .vfx-glass {
+    background-color: color-mix(in srgb, var(--card) 90%, transparent 10%);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  .vfx-edge-light {
+    border-color: var(--border);
+    box-shadow:
+      inset 0 1px 0 var(--vfx-highlight),
+      inset 0 -1px 0 color-mix(in srgb, var(--vfx-shadow) 60%, transparent 40%);
+  }
+
+  .vfx-float-shadow {
+    box-shadow:
+      0 12px 28px -20px var(--vfx-shadow-strong),
+      0 3px 8px -5px var(--vfx-shadow);
+  }
+
+  .vfx-sheen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      220px circle at var(--sheen-x, 50%) var(--sheen-y, 50%),
+      var(--vfx-sheen) 0%,
+      transparent 62%
+    );
+    opacity: 0;
+    transition: opacity 220ms ease-out;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .vfx-sheen:hover::before,
+  .vfx-sheen:focus-within::before {
+    opacity: 0.35;
+  }
+
+  .vfx-surface > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .vfx-icon-chip,
+  button[data-slot="button"][data-size^="icon"] {
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 92%, var(--card) 8%);
+    box-shadow:
+      inset 0 1px 0 var(--vfx-highlight),
+      0 6px 14px -10px var(--vfx-shadow);
+  }
+
+  .vfx-icon-chip:hover,
+  button[data-slot="button"][data-size^="icon"]:hover {
+    background: color-mix(in srgb, var(--card) 94%, transparent 6%);
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .motion-safe-enter {
       animation: subtle-fade-up 260ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -212,4 +290,40 @@ html.pref-compact .snippet-card-shell {
 .shiki-wrap.wrap-lines code {
   white-space: pre-wrap !important;
   word-break: break-word;
+}
+
+.theme-scrollbar,
+.toast-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent 78%) transparent;
+}
+
+.theme-scrollbar::-webkit-scrollbar,
+.toast-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-track,
+.toast-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb,
+.toast-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--foreground) 20%, transparent 80%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb:hover,
+.toast-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 30%, transparent 70%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html.a11y-reduce-motion .vfx-sheen::before {
+  opacity: 0.08 !important;
+  transition: none !important;
 }
