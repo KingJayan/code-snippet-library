@@ -6,9 +6,11 @@ import { Bot, KeyRound, Loader2, PanelRightClose, Send, Sparkles, Wand2 } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { readStringSetting, SETTINGS_KEYS } from "@/lib/settings";
 import type { SnippetWithTags } from "@/lib/types";
 
 type ProviderId = "openai" | "anthropic" | "gemini" | "openrouter" | "ollama" | "openai-compatible" | "puterjs";
+type ChatMode = "improve" | "refactor" | "debug" | "explain";
 
 declare global {
   interface Window {
@@ -111,9 +113,18 @@ const PROVIDER_MODELS: Record<ProviderId, string[]> = {
 const STORAGE_KEYS = {
   provider: "snips.ai.provider",
   model: "snips.ai.model",
+  mode: "snips.ai.mode",
   apiKey: "snips.ai.apiKey",
   baseUrl: "snips.ai.baseUrl",
 };
+
+const MODE_OPTIONS: Array<{ value: ChatMode; label: string }> = [
+  { value: "improve", label: "improve" },
+  { value: "refactor", label: "refactor" },
+  { value: "debug", label: "debug" },
+  { value: "explain", label: "explain" },
+];
+const MODE_VALUES = MODE_OPTIONS.map((option) => option.value);
 
 let puterScriptPromise: Promise<void> | null = null;
 
@@ -184,7 +195,14 @@ function toPuterErrorMessage(error: unknown): string {
   return error.message || fallback;
 }
 
-function buildPuterPrompt(messages: ChatMessage[], snippet: SnippetWithTags) {
+function buildPuterPrompt(messages: ChatMessage[], snippet: SnippetWithTags, mode: ChatMode) {
+  const modeInstruction: Record<ChatMode, string> = {
+    improve: "Task mode: Improve this snippet for correctness, performance, and maintainability.",
+    refactor: "Task mode: Refactor this snippet while preserving behavior.",
+    debug: "Task mode: Debug this snippet and provide fixed code.",
+    explain: "Task mode: Explain this snippet clearly. Only provide edits if explicitly requested.",
+  };
+
   const conversation = messages
     .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
     .join("\n\n");
@@ -192,6 +210,7 @@ function buildPuterPrompt(messages: ChatMessage[], snippet: SnippetWithTags) {
   return [
     "You are a senior software engineer helping improve code snippets.",
     "Give concrete fixes and include full updated code when an edit is requested.",
+    modeInstruction[mode],
     "",
     `Snippet title: ${snippet.title}`,
     `Language: ${snippet.language}`,
@@ -228,6 +247,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
   const pathname = usePathname();
   const [provider, setProvider] = useState<ProviderId>("openai");
   const [model, setModel] = useState("gpt-5-mini");
+  const [mode, setMode] = useState<ChatMode>("improve");
   const [useCustomModel, setUseCustomModel] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("http://localhost:11434");
@@ -263,6 +283,8 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
       setProvider(selectedProvider);
       setModel(storedModel);
       setUseCustomModel(!modelIsPreset);
+      const storedMode = readStringSetting(SETTINGS_KEYS.aiDefaultMode, "improve") as ChatMode;
+      setMode(MODE_VALUES.includes(storedMode) ? storedMode : "improve");
       setApiKey(localStorage.getItem(STORAGE_KEYS.apiKey) || "");
       setBaseUrl(localStorage.getItem(STORAGE_KEYS.baseUrl) || "http://localhost:11434");
     } catch {
@@ -274,12 +296,13 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
     try {
       localStorage.setItem(STORAGE_KEYS.provider, provider);
       localStorage.setItem(STORAGE_KEYS.model, model);
+      localStorage.setItem(STORAGE_KEYS.mode, mode);
       localStorage.setItem(STORAGE_KEYS.apiKey, apiKey);
       localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrl);
     } catch {
       return;
     }
-  }, [apiKey, baseUrl, model, provider]);
+  }, [apiKey, baseUrl, mode, model, provider]);
 
   async function sendPrompt(nextPrompt?: string) {
     const text = (nextPrompt ?? prompt).trim();
@@ -313,7 +336,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
         await ensurePuterScriptLoaded();
 
         const result = await window.puter?.ai?.chat?.(
-          buildPuterPrompt(nextMessages, snippet),
+          buildPuterPrompt(nextMessages, snippet, mode),
           { model }
         );
 
@@ -337,6 +360,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
         body: JSON.stringify({
           provider,
           model,
+          mode,
           apiKey,
           baseUrl,
           messages: nextMessages,
@@ -484,6 +508,21 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
               className="h-8 text-xs"
             />
           )}
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] text-muted-foreground">mode</span>
+          <select
+            className="h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            value={mode}
+            onChange={(event) => setMode(event.target.value as ChatMode)}
+          >
+            {MODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
 
         {provider === "puterjs" && (

@@ -202,3 +202,14 @@ html.a11y-strong-focus :focus-visible {
   outline-offset: 2px;
   box-shadow: 0 0 0 4px color-mix(in oklch, var(--ring) 30%, transparent 70%);
 }
+
+html.pref-compact .snippet-card-shell {
+  padding: 0.7rem;
+  gap: 0.55rem;
+}
+
+.shiki-wrap.wrap-lines pre,
+.shiki-wrap.wrap-lines code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+}

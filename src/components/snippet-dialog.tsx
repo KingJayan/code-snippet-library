@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Loader2, Save } from "lucide-react";
+import { ChevronDown, Loader2, Save, Sparkles } from "lucide-react";
 import { z } from "zod";
 import {
 	Dialog,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { generateDescriptionForSnippet, generateTagsForSnippet } from "@/lib/ai/client-tools";
 import { LANGUAGE_OPTIONS } from "@/lib/constants";
 import type { SnippetDraft, SnippetWithTags } from "@/lib/types";
 
@@ -63,6 +64,8 @@ export function SnippetDialog({
 		initialSnippet?.tags.map((tag) => tag.name).join(", ") ?? ""
 	);
 	const [submitting, setSubmitting] = useState(false);
+	const [tagging, setTagging] = useState(false);
+	const [docGenerating, setDocGenerating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	const isEditing = Boolean(initialSnippet);
@@ -70,6 +73,62 @@ export function SnippetDialog({
 
 	function updateField<K extends keyof SnippetDraft>(field: K, value: SnippetDraft[K]) {
 		setDraft((prev) => ({ ...prev, [field]: value }));
+	}
+
+	async function handleAiTags() {
+		if (!draft.code.trim()) {
+			setError("paste code first to generate tags");
+			return;
+		}
+
+		setTagging(true);
+		setError(null);
+
+		try {
+			const generatedTags = await generateTagsForSnippet({
+				title: draft.title,
+				language: draft.language,
+				description: draft.description,
+				code: draft.code,
+			});
+
+			const existingTags = tagsInput
+				.split(",")
+				.map((tag) => tag.trim().toLowerCase())
+				.filter(Boolean);
+
+			const merged = [...new Set([...existingTags, ...generatedTags])];
+			setTagsInput(merged.join(", "));
+		} catch (aiError) {
+			setError(aiError instanceof Error ? aiError.message : "failed to generate tags");
+		} finally {
+			setTagging(false);
+		}
+	}
+
+	async function handleAiDescription() {
+		if (!draft.code.trim()) {
+			setError("paste code first to generate docs");
+			return;
+		}
+
+		setDocGenerating(true);
+		setError(null);
+
+		try {
+			const description = await generateDescriptionForSnippet({
+				title: draft.title,
+				language: draft.language,
+				description: draft.description,
+				code: draft.code,
+			});
+
+			updateField("description", description);
+		} catch (aiError) {
+			setError(aiError instanceof Error ? aiError.message : "failed to generate docs");
+		} finally {
+			setDocGenerating(false);
+		}
 	}
 
 	async function submit() {
@@ -176,7 +235,13 @@ export function SnippetDialog({
 							</label>
 
 							<label className="flex flex-col gap-1.5">
-								<span className="text-xs text-muted-foreground">tags (comma separated)</span>
+								<div className="flex items-center justify-between">
+									<span className="text-xs text-muted-foreground">tags (comma separated)</span>
+									<Button type="button" variant="ghost" size="xs" onClick={() => void handleAiTags()} disabled={tagging || submitting}>
+										{tagging ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+										ai tags
+									</Button>
+								</div>
 								<Input
 									value={tagsInput}
 									onChange={(event) => setTagsInput(event.target.value)}
@@ -188,6 +253,10 @@ export function SnippetDialog({
 						<label className="flex flex-col gap-1.5">
 							<div className="flex items-center justify-between">
 								<span className="text-xs text-muted-foreground">description</span>
+								<Button type="button" variant="ghost" size="xs" onClick={() => void handleAiDescription()} disabled={docGenerating || submitting}>
+									{docGenerating ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+									ai docs
+								</Button>
 								<span className="text-[10px] text-muted-foreground">
 									{draft.description.length}/1000
 								</span>

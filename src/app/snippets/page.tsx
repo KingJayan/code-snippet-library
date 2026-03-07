@@ -46,6 +46,7 @@ import {
   signOutUser,
   supabase,
 } from "@/lib/supabase";
+import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 import type { SnippetDraft, SnippetSummaryWithTags, Workspace } from "@/lib/types";
 
 const LIST_CACHE_KEY = "snips.list.cache.v1";
@@ -176,6 +177,7 @@ export default function SnippetsPage() {
   const [workspaceEditorMode, setWorkspaceEditorMode] = useState<"create" | "rename">("create");
   const [workspaceNameInput, setWorkspaceNameInput] = useState("");
   const [deleteWorkspaceOpen, setDeleteWorkspaceOpen] = useState(false);
+  const [showHints, setShowHints] = useState(true);
 
   const listParentRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -205,6 +207,20 @@ export default function SnippetsPage() {
         window.clearTimeout(toastTimerRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    setShowHints(readBoolSetting(SETTINGS_KEYS.showHints, true));
+
+    function onSettingsChanged(event: Event) {
+      const customEvent = event as CustomEvent<{ key?: string; value?: string }>;
+      if (customEvent.detail?.key === SETTINGS_KEYS.showHints) {
+        setShowHints(customEvent.detail.value === "1");
+      }
+    }
+
+    window.addEventListener("snips-settings-changed", onSettingsChanged as EventListener);
+    return () => window.removeEventListener("snips-settings-changed", onSettingsChanged as EventListener);
   }, []);
 
   const checkSession = useCallback(async () => {
@@ -713,10 +729,12 @@ export default function SnippetsPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <AppLogo />
-          <p className="text-sm text-muted-foreground">
-           quick add with <span className="font-medium">n</span>, save with {" "}
-            <span className="font-medium">cmd/ctrl+enter</span>
-          </p>
+          {showHints && (
+            <p className="text-sm text-muted-foreground">
+              quick add with <span className="font-medium">n</span>, save with {" "}
+              <span className="font-medium">cmd/ctrl+enter</span>
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -823,9 +841,11 @@ export default function SnippetsPage() {
           </div>
 
           <SearchBar value={search} onChange={setSearch} inputRef={searchInputRef} />
-          <p className="px-1 text-xs text-muted-foreground">
-            power search: <span className="font-mono">tag:react</span>, <span className="font-mono">lang:typescript</span>, <span className="font-mono">is:pinned</span>
-          </p>
+          {showHints && (
+            <p className="px-1 text-xs text-muted-foreground">
+              power search: <span className="font-mono">tag:react</span>, <span className="font-mono">lang:typescript</span>, <span className="font-mono">is:pinned</span>
+            </p>
+          )}
           <TagFilter tags={allTags} activeTag={activeTag} onTagChange={setActiveTag} />
         </div>
       </section>

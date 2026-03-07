@@ -28,10 +28,13 @@ import { SnippetDialog } from "@/components/snippet-dialog";
 import {
   deleteSnippet,
   getSnippetById,
+  listSnippets,
   togglePinSnippet,
   togglePublicSnippet,
   updateSnippet,
 } from "@/lib/snippet-service";
+import { isAiSimilarityEnabled, rankSimilarSnippets, type SimilarSnippetResult } from "@/lib/ai/client-tools";
+import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { timeAgo } from "@/lib/time";
 import type { SnippetDraft, SnippetWithTags } from "@/lib/types";
 
@@ -91,6 +94,10 @@ export default function SnippetDetailPage() {
   const [aiCodeOverride, setAiCodeOverride] = useState<string | null>(null);
   const [aiChatMinimized, setAiChatMinimized] = useState(false);
   const [renderAiChat, setRenderAiChat] = useState(true);
+  const [similarityEnabled, setSimilarityEnabled] = useState(false);
+  const [similarityLoading, setSimilarityLoading] = useState(false);
+  const [similarityError, setSimilarityError] = useState<string | null>(null);
+  const [similarSnippets, setSimilarSnippets] = useState<SimilarSnippetResult[]>([]);
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
 
@@ -206,6 +213,30 @@ export default function SnippetDetailPage() {
     return () => window.clearTimeout(timeout);
   }, [aiChatMinimized]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    setSimilarityEnabled(isAiSimilarityEnabled());
+    const aiPanelOpen = readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true);
+    setAiChatMinimized(!aiPanelOpen);
+    setRenderAiChat(aiPanelOpen);
+
+    function onSettingsChange() {
+      setSimilarityEnabled(isAiSimilarityEnabled());
+
+      const openByDefault = readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true);
+      if (openByDefault) {
+        setRenderAiChat(true);
+        setAiChatMinimized(false);
+      } else {
+        setAiChatMinimized(true);
+      }
+    }
+
+    window.addEventListener("snips-settings-changed", onSettingsChange);
+    return () => window.removeEventListener("snips-settings-changed", onSettingsChange);
+  }, []);
+
   async function handleDelete() {
     if (!snippet || deleting) return;
 
@@ -257,6 +288,58 @@ export default function SnippetDetailPage() {
     setAiCodeOverride(nextCode);
     setEditOpen(true);
     showToast("ai suggestion loaded into editor", "success");
+  }
+
+  async function handleFindSimilar() {
+    if (!snippet) return;
+
+    setSimilarityLoading(true);
+    setSimilarityError(null);
+
+    try {
+      const { data: summaries, error: summaryError } = await listSnippets({
+        workspaceId: snippet.workspace_id,
+        limit: 30,
+      });
+
+      if (summaryError) {
+        throw new Error(summaryError);
+      }
+
+      const candidates = (summaries ?? [])
+        .filter((candidate) => candidate.id !== snippet.id)
+        .slice(0, 12);
+
+      if (candidates.length === 0) {
+        setSimilarSnippets([]);
+        return;
+      }
+
+      const detailedResults = await Promise.all(
+        candidates.map(async (candidate) => {
+          const { data } = await getSnippetById(candidate.id);
+          return data;
+        })
+      );
+
+      const detailedCandidates = detailedResults.filter(Boolean) as SnippetWithTags[];
+
+      if (detailedCandidates.length === 0) {
+        setSimilarSnippets([]);
+        return;
+      }
+
+      const ranked = await rankSimilarSnippets({
+        target: snippet,
+        candidates: detailedCandidates,
+      });
+
+      setSimilarSnippets(ranked);
+    } catch (findError) {
+      setSimilarityError(findError instanceof Error ? findError.message : "failed to find similar snippets");
+    } finally {
+      setSimilarityLoading(false);
+    }
   }
 
   async function handleTogglePin() {
@@ -525,6 +608,48 @@ export default function SnippetDetailPage() {
             </div>
           )}
           <CodeBlock code={snippet.code} language={snippet.language} />
+
+          {similarityEnabled && (
+            <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold tracking-tight">ai similar snippets</h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleFindSimilar()}
+                  disabled={similarityLoading}
+                >
+                  {similarityLoading ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {similarityLoading ? "searching..." : "find similar"}
+                </Button>
+              </div>
+
+              {similarityError && (
+                <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                  {similarityError}
+                </p>
+              )}
+
+              {similarSnippets.length > 0 ? (
+                <ul className="space-y-2">
+                  {similarSnippets.map((item) => (
+                    <li key={item.id} className="rounded-lg border border-border/70 bg-background/80 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link href={`/snippets/${item.id}`} className="truncate text-sm font-medium hover:underline">
+                          {item.title}
+                        </Link>
+                        <Badge variant="outline" className="text-[10px]">{item.score}%</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{item.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground">run search to discover related snippets.</p>
+              )}
+            </section>
+          )}
         </div>
 
         {renderAiChat && (

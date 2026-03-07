@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Copy, Loader2, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LANGUAGES } from "@/lib/constants";
+import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 
 const HIGHLIGHT_CACHE = new Map<string, string>();
 
@@ -55,9 +56,31 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
 	const [theme, setTheme] = useState<Theme>("github-dark");
 	const [showThemes, setShowThemes] = useState(false);
+	const [wrapLines, setWrapLines] = useState(false);
 
 	useEffect(() => {
 		setTheme(getStoredTheme());
+		setWrapLines(readBoolSetting(SETTINGS_KEYS.wrapCodeLines));
+	}, []);
+
+	useEffect(() => {
+		function handleSettingsChange(event: Event) {
+			const customEvent = event as CustomEvent<{ key?: string; value?: string }>;
+			if (customEvent.detail?.key === SETTINGS_KEYS.wrapCodeLines) {
+				setWrapLines(customEvent.detail.value === "1");
+			}
+
+			if (customEvent.detail?.key === SETTINGS_KEYS.codeTheme && customEvent.detail.value) {
+				const next = customEvent.detail.value as Theme;
+				const isValid = THEMES.some((themeOption) => themeOption.value === next);
+				if (isValid) {
+					setTheme(next);
+				}
+			}
+		}
+
+		window.addEventListener("snips-settings-changed", handleSettingsChange as EventListener);
+		return () => window.removeEventListener("snips-settings-changed", handleSettingsChange as EventListener);
 	}, []);
 
 	useEffect(() => {
@@ -195,7 +218,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 
 			{html ? (
 				<div
-					className="shiki-wrap overflow-x-auto text-sm"
+					className={`shiki-wrap text-sm ${wrapLines ? "wrap-lines overflow-x-hidden" : "overflow-x-auto"}`}
 					dangerouslySetInnerHTML={{ __html: html }}
 				/>
 			) : (

@@ -56,6 +56,10 @@ export default function RootLayout({
   if (localStorage.getItem('snips.a11y.stronger-focus') === '1') {
     root.classList.add('a11y-strong-focus');
   }
+
+  if (localStorage.getItem('snips.pref.compact-layout') === '1') {
+    root.classList.add('pref-compact');
+  }
 })();`,
           }}
         />
