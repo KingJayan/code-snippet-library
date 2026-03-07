@@ -29,6 +29,23 @@ minimal, fast personal (and shared) snippet vault built with next.js, supabase, 
 - shiki for syntax highlighting
 - modular ai provider adapters (openai, anthropic, gemini, ollama, openrouter, openai-compatible, puter)
 
+## ui preview
+
+### 1) snippets dashboard (dark)
+Primary workspace surface with quick actions, search/filter area, and snippet list cards.
+
+![Snippets dashboard](docs/screenshots/snippets-dashboard.png)
+
+### 2) workspace explorer (light)
+Explorer-style folder/workspace manager with size states and pinned snippet previews.
+
+![Workspace explorer](docs/screenshots/workspace-explorer-light.png)
+
+### 3) ai edits panel
+Context-aware AI assistant sidebar with provider/model/mode controls and chat history.
+
+![AI edits panel](docs/screenshots/ai-edits-panel.png)
+
 ## setup
 
 1. install deps
