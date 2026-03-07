@@ -181,7 +181,7 @@ export default function PublicSnippetsPage() {
             <Code2 className="size-4" />
           </Link>
           <Link
-            href="https://github.com/kingjayan/code-snippet-library"
+            href="https://github.com/KingJayan/code-snippet-library/blob/master/CONTRIBUTING.md"
             className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground animate-subtle-pop-in vfx-icon-chip"
             title="contribute"
             aria-label="contribute"
