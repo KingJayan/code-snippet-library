@@ -24,14 +24,11 @@ export function InlineToast({
   const [activeTone, setActiveTone] = useState<ToastTone>(tone);
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(100);
-  const [mounted, setMounted] = useState(false);
   const frameRef = useRef<number | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     return () => {
-      setMounted(false);
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
       }
@@ -42,25 +39,32 @@ export function InlineToast({
   }, []);
 
   useEffect(() => {
+    let kickoffFrame: number | null = null;
+
     if (message) {
       if (hideTimeoutRef.current !== null) {
         window.clearTimeout(hideTimeoutRef.current);
       }
 
-      setActiveMessage(message);
-      setActiveTone(tone);
-      setVisible(true);
-      setProgress(100);
+      kickoffFrame = window.requestAnimationFrame(() => {
+        setActiveMessage(message);
+        setActiveTone(tone);
+        setVisible(true);
+        setProgress(100);
 
-      if (frameRef.current !== null) {
-        window.cancelAnimationFrame(frameRef.current);
-      }
+        if (frameRef.current !== null) {
+          window.cancelAnimationFrame(frameRef.current);
+        }
 
-      frameRef.current = window.requestAnimationFrame(() => {
-        setProgress(0);
+        frameRef.current = window.requestAnimationFrame(() => {
+          setProgress(0);
+        });
       });
 
       return () => {
+        if (kickoffFrame !== null) {
+          window.cancelAnimationFrame(kickoffFrame);
+        }
         if (frameRef.current !== null) {
           window.cancelAnimationFrame(frameRef.current);
         }
@@ -71,13 +75,18 @@ export function InlineToast({
       return;
     }
 
-    setVisible(false);
-    hideTimeoutRef.current = window.setTimeout(() => {
-      setActiveMessage(null);
-      setProgress(100);
-    }, EXIT_MS);
+    kickoffFrame = window.requestAnimationFrame(() => {
+      setVisible(false);
+      hideTimeoutRef.current = window.setTimeout(() => {
+        setActiveMessage(null);
+        setProgress(100);
+      }, EXIT_MS);
+    });
 
     return () => {
+      if (kickoffFrame !== null) {
+        window.cancelAnimationFrame(kickoffFrame);
+      }
       if (hideTimeoutRef.current !== null) {
         window.clearTimeout(hideTimeoutRef.current);
       }
@@ -94,10 +103,6 @@ export function InlineToast({
       : activeTone === "error"
         ? AlertCircle
         : Info;
-
-  if (!mounted) {
-    return null;
-  }
 
   return createPortal(
     <div

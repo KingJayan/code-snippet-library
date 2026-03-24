@@ -1,7 +1,8 @@
 "use client";
 
 import type { ChatMode } from "@/lib/ai/chat-types";
-import type { SnippetSummaryWithTags, SnippetWithTags } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
+import type { SnippetWithTags } from "@/lib/types";
 import { SETTINGS_KEYS } from "@/lib/settings";
 
 type StoredAiConfig = {
@@ -23,10 +24,12 @@ function readAiConfig(): StoredAiConfig {
     return { provider: "openai", model: "gpt-5-mini", apiKey: "", baseUrl: "" };
   }
 
+  const sessionApiKey = window.sessionStorage.getItem("snips.ai.apiKey.session") || "";
+
   return {
     provider: localStorage.getItem("snips.ai.provider") || "openai",
     model: localStorage.getItem("snips.ai.model") || "gpt-5-mini",
-    apiKey: localStorage.getItem("snips.ai.apiKey") || "",
+    apiKey: sessionApiKey,
     baseUrl: localStorage.getItem("snips.ai.baseUrl") || "",
   };
 }
@@ -40,6 +43,12 @@ async function callAi(params: {
   prompt: string;
   snippet: Pick<SnippetWithTags, "title" | "language" | "description" | "code">;
 }) {
+  const session = await supabase?.auth.getSession();
+  const accessToken = session?.data.session?.access_token;
+  if (!accessToken) {
+    throw new Error("your session expired. refresh and sign in again.");
+  }
+
   const config = readAiConfig();
 
   if (config.provider === "puterjs") {
@@ -50,6 +59,7 @@ async function callAi(params: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
       provider: config.provider,

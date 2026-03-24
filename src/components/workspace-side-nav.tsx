@@ -46,8 +46,6 @@ export function WorkspaceSideNav({
   const [desktopPanelSize, setDesktopPanelSize] = useState<DesktopPanelSize>("full");
   const [workspacePinsOpen, setWorkspacePinsOpen] = useState<Record<string, boolean>>({});
   const hasActions = actions.length > 0;
-  const iconButtonClass =
-    "grid h-8 w-8 place-items-center rounded-lg bg-background/45 text-foreground/75 transition-all duration-200 ease-out hover:bg-accent/55 hover:text-foreground active:scale-95";
   const mobileIconButtonClass =
     "grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-background/45 text-foreground/75 transition-all duration-200 ease-out hover:bg-accent/55 hover:text-foreground active:scale-95";
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { readStringSetting, SETTINGS_KEYS } from "@/lib/settings";
+import { supabase } from "@/lib/supabase";
 import type { SnippetWithTags } from "@/lib/types";
 
 type ProviderId = "openai" | "anthropic" | "gemini" | "openrouter" | "ollama" | "openai-compatible" | "puterjs";
@@ -114,8 +115,11 @@ const STORAGE_KEYS = {
   provider: "snips.ai.provider",
   model: "snips.ai.model",
   mode: "snips.ai.mode",
-  apiKey: "snips.ai.apiKey",
   baseUrl: "snips.ai.baseUrl",
+};
+
+const SESSION_KEYS = {
+  apiKey: "snips.ai.apiKey.session",
 };
 
 const MODE_OPTIONS: Array<{ value: ChatMode; label: string }> = [
@@ -274,10 +278,6 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
   );
   const canApplySuggestedCode = Boolean(extractCodeBlock(latestAssistantMessage));
 
-  if (pathname?.startsWith("/public")) {
-    return null;
-  }
-
   useEffect(() => {
     try {
       const storedProvider = localStorage.getItem(STORAGE_KEYS.provider) as ProviderId | null;
@@ -294,7 +294,8 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
       setUseCustomModel(!modelIsPreset);
       const storedMode = readStringSetting(SETTINGS_KEYS.aiDefaultMode, "improve") as ChatMode;
       setMode(MODE_VALUES.includes(storedMode) ? storedMode : "improve");
-      setApiKey(localStorage.getItem(STORAGE_KEYS.apiKey) || "");
+      localStorage.removeItem("snips.ai.apiKey");
+      setApiKey(sessionStorage.getItem(SESSION_KEYS.apiKey) || "");
       setBaseUrl(localStorage.getItem(STORAGE_KEYS.baseUrl) || "http://localhost:11434");
     } catch {
       return;
@@ -306,8 +307,12 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
       localStorage.setItem(STORAGE_KEYS.provider, provider);
       localStorage.setItem(STORAGE_KEYS.model, model);
       localStorage.setItem(STORAGE_KEYS.mode, mode);
-      localStorage.setItem(STORAGE_KEYS.apiKey, apiKey);
       localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrl);
+      if (apiKey.trim()) {
+        sessionStorage.setItem(SESSION_KEYS.apiKey, apiKey);
+      } else {
+        sessionStorage.removeItem(SESSION_KEYS.apiKey);
+      }
     } catch {
       return;
     }
@@ -361,10 +366,19 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
         return;
       }
 
+      const session = await supabase?.auth.getSession();
+      const accessToken = session?.data.session?.access_token;
+      if (!accessToken) {
+        setError("your session expired. refresh and sign in again.");
+        setMessages((current) => current.slice(0, -1));
+        return;
+      }
+
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           provider,
@@ -423,6 +437,10 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
   function clearChat() {
     setMessages([]);
     setError(null);
+  }
+
+  if (pathname?.startsWith("/public")) {
+    return null;
   }
 
   return (
@@ -544,7 +562,7 @@ export function AiChatSidebar({ snippet, onApplyCode, onMinimize }: AiChatSideba
           <label className="flex flex-col gap-1">
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <KeyRound className="size-3" />
-              api key (stored locally)
+              api key (tab session only)
             </span>
             <Input
               type="password"

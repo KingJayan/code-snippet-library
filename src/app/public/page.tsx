@@ -163,7 +163,7 @@ export default function PublicSnippetsPage() {
           ) : (
             <div className="space-y-3">
               {filteredSnippets.map((snippet) => (
-                <SnippetCard key={snippet.id} snippet={snippet} />
+                <SnippetCard key={snippet.id} snippet={snippet} detailBasePath="/public" />
               ))}
             </div>
           )}

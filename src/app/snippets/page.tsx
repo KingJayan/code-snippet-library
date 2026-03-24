@@ -465,18 +465,29 @@ export default function SnippetsPage() {
   const workspacePinnedTitles = useMemo(() => {
     const titlesByWorkspace: Record<string, string[]> = {};
 
-    for (const snippet of snippets) {
-      if (!snippet.pinned || !snippet.workspace_id) continue;
+    function collectTitles(source: SnippetSummaryWithTags[]) {
+      for (const snippet of source) {
+        if (!snippet.pinned || !snippet.workspace_id) continue;
 
-      const title = snippet.title.trim() || "untitled";
-      const current = titlesByWorkspace[snippet.workspace_id] ?? [];
-      if (current.length < 3) {
-        titlesByWorkspace[snippet.workspace_id] = [...current, title];
+        const title = snippet.title.trim() || "untitled";
+        const current = titlesByWorkspace[snippet.workspace_id] ?? [];
+        if (current.length < 3 && !current.includes(title)) {
+          titlesByWorkspace[snippet.workspace_id] = [...current, title];
+        }
       }
     }
 
+    for (const workspace of workspaces) {
+      const cached = readCachedSnippets(workspace.id);
+      if (cached.length > 0) {
+        collectTitles(cached);
+      }
+    }
+
+    collectTitles(snippets);
+
     return titlesByWorkspace;
-  }, [snippets]);
+  }, [snippets, workspaces]);
 
   const rowVirtualizer = useVirtualizer({
     count: filteredSnippets.length,

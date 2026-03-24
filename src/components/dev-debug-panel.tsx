@@ -6,7 +6,8 @@ import { Bug, ChevronUp, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, supabase } from "@/lib/supabase";
 
-const OWNER_EMAIL = "jayanp0202@gmail.com";
+const DEV_OWNER_EMAIL = process.env.NEXT_PUBLIC_DEV_OWNER_EMAIL?.toLowerCase().trim() ?? "";
+const IS_PROD = process.env.NODE_ENV === "production";
 
 type RuntimeStats = {
   heapUsedMb: number | null;
@@ -47,7 +48,7 @@ export function DevDebugPanel() {
       if (!mounted) return;
 
       const email = user?.email?.toLowerCase().trim();
-      const isOwner = email === OWNER_EMAIL;
+      const isOwner = !IS_PROD && Boolean(DEV_OWNER_EMAIL) && email === DEV_OWNER_EMAIL;
       setAllowed(isOwner);
       if (isOwner) {
         setStats(readRuntimeStats());
@@ -58,7 +59,7 @@ export function DevDebugPanel() {
 
     const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
       const email = session?.user?.email?.toLowerCase().trim();
-      const isOwner = email === OWNER_EMAIL;
+      const isOwner = !IS_PROD && Boolean(DEV_OWNER_EMAIL) && email === DEV_OWNER_EMAIL;
       setAllowed(isOwner);
       if (isOwner) {
         setStats(readRuntimeStats());

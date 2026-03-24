@@ -13,9 +13,15 @@ interface SnippetCardProps {
   snippet: SnippetSummaryWithTags;
   onTagClick?: (tagName: string) => void;
   onTogglePin?: (id: string, pinned: boolean) => void;
+  detailBasePath?: "/snippets" | "/public";
 }
 
-function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) {
+function SnippetCardRaw({
+  snippet,
+  onTagClick,
+  onTogglePin,
+  detailBasePath = "/snippets",
+}: SnippetCardProps) {
   const lang = LANGUAGES[snippet.language] ?? {
     label: snippet.language,
     shiki: snippet.language,
@@ -29,7 +35,7 @@ function SnippetCardRaw({ snippet, onTagClick, onTogglePin }: SnippetCardProps) 
 
   return (
     <Link
-      href={`/snippets/${snippet.id}`}
+      href={`${detailBasePath}/${snippet.id}`}
       className="snippet-card-shell group relative flex flex-col gap-3 rounded-lg border border-border/60
                  bg-card p-4 transition-all duration-200 ease-out motion-safe-enter vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow
                  hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md

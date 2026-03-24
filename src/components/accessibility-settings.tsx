@@ -39,45 +39,37 @@ const AI_MODE_OPTIONS = ["improve", "refactor", "debug", "explain"] as const;
 type AiMode = (typeof AI_MODE_OPTIONS)[number];
 type SettingsGroup = "ai" | "preferences" | "accessibility";
 
+function readInitialA11ySettings(): A11ySettings {
+  return {
+    reducedMotion: readBoolSetting(SETTINGS_KEYS.reducedMotion),
+    largerText: readBoolSetting(SETTINGS_KEYS.largerText),
+    strongerFocus: readBoolSetting(SETTINGS_KEYS.strongerFocus),
+  };
+}
+
+function readInitialAiMode(): AiMode {
+  const savedMode = readStringSetting(SETTINGS_KEYS.aiDefaultMode, "improve");
+  return AI_MODE_OPTIONS.includes(savedMode as AiMode) ? (savedMode as AiMode) : "improve";
+}
+
 export function AccessibilitySettings() {
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<A11ySettings>({
-    reducedMotion: false,
-    largerText: false,
-    strongerFocus: false,
-  });
-  const [aiSimilaritySearch, setAiSimilaritySearch] = useState(false);
-  const [compactLayout, setCompactLayout] = useState(false);
-  const [showHints, setShowHints] = useState(true);
-  const [wrapCodeLines, setWrapCodeLines] = useState(false);
-  const [aiPanelOpenByDefault, setAiPanelOpenByDefault] = useState(true);
-  const [aiDefaultMode, setAiDefaultMode] = useState<AiMode>("improve");
-  const [codeTheme, setCodeTheme] = useState("github-dark");
+  const [settings, setSettings] = useState<A11ySettings>(() => readInitialA11ySettings());
+  const [aiSimilaritySearch, setAiSimilaritySearch] = useState(() => readBoolSetting(SETTINGS_KEYS.aiSimilaritySearch));
+  const [compactLayout, setCompactLayout] = useState(() => readBoolSetting(SETTINGS_KEYS.compactLayout));
+  const [showHints, setShowHints] = useState(() => readBoolSetting(SETTINGS_KEYS.showHints, true));
+  const [wrapCodeLines, setWrapCodeLines] = useState(() => readBoolSetting(SETTINGS_KEYS.wrapCodeLines));
+  const [aiPanelOpenByDefault, setAiPanelOpenByDefault] = useState(() => readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true));
+  const [aiDefaultMode, setAiDefaultMode] = useState<AiMode>(() => readInitialAiMode());
+  const [codeTheme, setCodeTheme] = useState(() => readStringSetting(SETTINGS_KEYS.codeTheme, "github-dark"));
   const [activeGroup, setActiveGroup] = useState<SettingsGroup>("ai");
 
   useEffect(() => {
-    const next: A11ySettings = {
-      reducedMotion: readBoolSetting(SETTINGS_KEYS.reducedMotion),
-      largerText: readBoolSetting(SETTINGS_KEYS.largerText),
-      strongerFocus: readBoolSetting(SETTINGS_KEYS.strongerFocus),
-    };
-
-    setSettings(next);
-    applyRootClass("a11y-reduce-motion", next.reducedMotion);
-    applyRootClass("a11y-large-text", next.largerText);
-    applyRootClass("a11y-strong-focus", next.strongerFocus);
-    setAiSimilaritySearch(readBoolSetting(SETTINGS_KEYS.aiSimilaritySearch));
-    const compact = readBoolSetting(SETTINGS_KEYS.compactLayout);
-    setCompactLayout(compact);
-    applyRootClass("pref-compact", compact);
-    setShowHints(readBoolSetting(SETTINGS_KEYS.showHints, true));
-    setWrapCodeLines(readBoolSetting(SETTINGS_KEYS.wrapCodeLines));
-    setAiPanelOpenByDefault(readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true));
-    const savedMode = readStringSetting(SETTINGS_KEYS.aiDefaultMode, "improve");
-    setAiDefaultMode(AI_MODE_OPTIONS.includes(savedMode as AiMode) ? (savedMode as AiMode) : "improve");
-    const savedCodeTheme = readStringSetting(SETTINGS_KEYS.codeTheme, "github-dark");
-    setCodeTheme(savedCodeTheme);
-  }, []);
+    applyRootClass("a11y-reduce-motion", settings.reducedMotion);
+    applyRootClass("a11y-large-text", settings.largerText);
+    applyRootClass("a11y-strong-focus", settings.strongerFocus);
+    applyRootClass("pref-compact", compactLayout);
+  }, [compactLayout, settings.largerText, settings.reducedMotion, settings.strongerFocus]);
 
   const enabledCount = useMemo(() => {
     const a11yCount = Object.values(settings).filter(Boolean).length;

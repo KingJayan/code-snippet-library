@@ -69,7 +69,14 @@ OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 GEMINI_API_KEY=
 OPENROUTER_API_KEY=
+OPENAI_COMPATIBLE_API_KEY=
 OLLAMA_BASE_URL=http://localhost:11434
+
+# optional: allow non-local ollama host (off by default for safety)
+SNIPS_AI_ALLOW_REMOTE_OLLAMA=0
+
+# optional: enable dev debug panel for a specific account (dev only)
+NEXT_PUBLIC_DEV_OWNER_EMAIL=
 ```
 
 3. run sql schema in supabase sql editor
@@ -130,6 +137,9 @@ npm run dev
 - ask for changes, then apply suggested code directly into the editor
 - generate tags and docs from snippet content in the snippet dialog
 - enable similarity search from settings to find related snippets by intent
+- `/api/ai/chat` requires an authenticated user session and is rate-limited
+- api keys entered in ui are kept in tab session storage (not local storage)
+- provider env vars are used as secure fallback when no ui key is provided
 
 **settings**
 - open settings from the header action
