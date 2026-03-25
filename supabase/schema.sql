@@ -44,6 +44,8 @@ create table public.snippets (
   benchmark_bytes integer,
   benchmark_bits integer,
   benchmark_lines integer,
+  view_count integer not null default 0,
+  copy_count integer not null default 0,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -289,6 +291,8 @@ create policy "users can delete own snippet_tags"
 -- alter table public.snippets add column if not exists benchmark_bytes integer;
 -- alter table public.snippets add column if not exists benchmark_bits integer;
 -- alter table public.snippets add column if not exists benchmark_lines integer;
+-- alter table public.snippets add column if not exists view_count integer not null default 0;
+-- alter table public.snippets add column if not exists copy_count integer not null default 0;
 --
 -- insert into public.workspaces (owner_id, name)
 -- select distinct user_id, 'default' from public.snippets

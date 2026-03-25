@@ -582,6 +582,8 @@ export default function SnippetsPage() {
           benchmark_bytes: data.benchmark_bytes,
           benchmark_bits: data.benchmark_bits,
           benchmark_lines: data.benchmark_lines,
+          view_count: data.view_count,
+          copy_count: data.copy_count,
           tags: data.tags,
         },
         ...snippets,

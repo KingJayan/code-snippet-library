@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Copy,
@@ -27,11 +27,14 @@ import { SnippetDialog } from "@/components/snippet-dialog";
 import {
   deleteSnippet,
   getSnippetById,
+  incrementSnippetCopyCount,
+  incrementSnippetViewCount,
   listSnippets,
   togglePinSnippet,
   togglePublicSnippet,
   updateSnippet,
 } from "@/lib/snippet-service";
+import { formatSnippetForCopy, type SnippetCopyMode } from "@/lib/copy-modes";
 import { isAiSimilarityEnabled, rankSimilarSnippets, type SimilarSnippetResult } from "@/lib/ai/client-tools";
 import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { timeAgo } from "@/lib/time";
@@ -102,6 +105,8 @@ export default function SnippetDetailPage() {
     runtimeMs: number | null;
     memoryKb: number | null;
   } | null>(null);
+  const [copyMode, setCopyMode] = useState<SnippetCopyMode>("raw");
+  const countedViewRef = useRef<string | null>(null);
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
 
@@ -117,16 +122,26 @@ export default function SnippetDetailPage() {
     if (!snippet) return;
 
     try {
-      await navigator.clipboard.writeText(snippet.code);
+      const text = formatSnippetForCopy({
+        code: snippet.code,
+        language: snippet.language,
+        mode: copyMode,
+      });
+
+      await navigator.clipboard.writeText(text);
+      void incrementSnippetCopyCount(snippet.id);
+      setSnippet((current) =>
+        current ? { ...current, copy_count: current.copy_count + 1 } : current
+      );
       setCopyState("done");
-      showToast("copied", "success");
+      showToast(`copied (${copyMode})`, "success");
       setTimeout(() => setCopyState("idle"), 1200);
     } catch {
       setCopyState("failed");
       showToast("copy failed", "error");
       setTimeout(() => setCopyState("idle"), 1200);
     }
-  }, [showToast, snippet]);
+  }, [copyMode, showToast, snippet]);
 
   const load = useCallback(async (signal?: AbortSignal, background?: boolean) => {
     if (!snippetId) {
@@ -182,6 +197,17 @@ export default function SnippetDetailPage() {
   }, [load, snippetId]);
 
   useEffect(() => {
+    if (!snippet) return;
+    if (countedViewRef.current === snippet.id) return;
+
+    countedViewRef.current = snippet.id;
+    setSnippet((current) =>
+      current ? { ...current, view_count: current.view_count + 1 } : current
+    );
+    void incrementSnippetViewCount(snippet.id);
+  }, [snippet]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (!snippet || isTypingElement(event.target)) {
         return;
@@ -206,13 +232,35 @@ export default function SnippetDetailPage() {
 
       if (vimShortcutsEnabled && key === "p") {
         event.preventDefault();
-        void handleTogglePin();
+        const currentSnippet = snippet;
+        if (!currentSnippet) {
+          return;
+        }
+
+        const newPinnedState = !currentSnippet.pinned;
+        setActionError(null);
+        showToast(newPinnedState ? "pinning..." : "unpinning...", "info");
+
+        void (async () => {
+          const { error: serviceError } = await togglePinSnippet(currentSnippet.id, newPinnedState);
+
+          if (serviceError) {
+            setActionError(serviceError);
+            showToast(serviceError, "error");
+            return;
+          }
+
+          const updated = { ...currentSnippet, pinned: newPinnedState };
+          setSnippet(updated);
+          writeCachedSnippet(updated);
+          showToast(newPinnedState ? "pinned" : "unpinned", "success");
+        })();
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [copyCode, handleTogglePin, snippet, vimShortcutsEnabled]);
+  }, [copyCode, showToast, snippet, vimShortcutsEnabled]);
 
   useEffect(() => {
     if (!aiChatMinimized) {
@@ -510,6 +558,16 @@ export default function SnippetDetailPage() {
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={copyMode}
+              onChange={(event) => setCopyMode(event.target.value as SnippetCopyMode)}
+              aria-label="copy mode"
+            >
+              <option value="raw">raw code</option>
+              <option value="markdown">markdown block</option>
+              <option value="with-line-numbers">with line numbers</option>
+            </select>
             <Button type="button" variant="outline" size="sm" onClick={() => void copyCode()}>
               <Copy className="size-4" />
               {copyState === "done"
@@ -592,6 +650,8 @@ export default function SnippetDetailPage() {
           <Badge variant="outline" className="text-[10px]">{`bytes ${snippet.benchmark_bytes ?? 0}`}</Badge>
           <Badge variant="outline" className="text-[10px]">{`bits ${snippet.benchmark_bits ?? 0}`}</Badge>
           <Badge variant="outline" className="text-[10px]">{`lines ${snippet.benchmark_lines ?? 0}`}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`views ${snippet.view_count}`}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`copies ${snippet.copy_count}`}</Badge>
           {executionStats?.runtimeMs !== null && executionStats?.runtimeMs !== undefined && (
             <Badge variant="outline" className="text-[10px]">{`runtime ${executionStats.runtimeMs}ms`}</Badge>
           )}

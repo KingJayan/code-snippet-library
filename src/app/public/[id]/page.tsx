@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Copy, Download, Loader2, Eye, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/code-block";
 import { WorkspaceSideNav } from "@/components/workspace-side-nav";
-import { getPublicSnippetById } from "@/lib/snippet-service";
+import { formatSnippetForCopy, type SnippetCopyMode } from "@/lib/copy-modes";
+import {
+  getPublicSnippetById,
+  incrementPublicSnippetCopyCount,
+  incrementPublicSnippetViewCount,
+} from "@/lib/snippet-service";
 import { timeAgo } from "@/lib/time";
 import type { SnippetWithTags } from "@/lib/types";
 
@@ -19,6 +24,8 @@ export default function PublicSnippetPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const [copyMode, setCopyMode] = useState<SnippetCopyMode>("raw");
+  const countedViewRef = useRef<string | null>(null);
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
 
@@ -52,11 +59,34 @@ export default function PublicSnippetPage() {
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  useEffect(() => {
+    if (!snippet) return;
+    if (countedViewRef.current === snippet.id) return;
+
+    countedViewRef.current = snippet.id;
+    queueMicrotask(() => {
+      setSnippet((current) =>
+        current ? { ...current, view_count: current.view_count + 1 } : current
+      );
+    });
+    void incrementPublicSnippetViewCount(snippet.id);
+  }, [snippet]);
+
   async function copyCode() {
     if (!snippet) return;
 
     try {
-      await navigator.clipboard.writeText(snippet.code);
+      const text = formatSnippetForCopy({
+        code: snippet.code,
+        language: snippet.language,
+        mode: copyMode,
+      });
+
+      await navigator.clipboard.writeText(text);
+      void incrementPublicSnippetCopyCount(snippet.id);
+      setSnippet((current) =>
+        current ? { ...current, copy_count: current.copy_count + 1 } : current
+      );
       setCopyState("done");
       setTimeout(() => setCopyState("idle"), 1200);
     } catch {
@@ -160,6 +190,16 @@ export default function PublicSnippetPage() {
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={copyMode}
+              onChange={(event) => setCopyMode(event.target.value as SnippetCopyMode)}
+              aria-label="copy mode"
+            >
+              <option value="raw">raw code</option>
+              <option value="markdown">markdown block</option>
+              <option value="with-line-numbers">with line numbers</option>
+            </select>
             <Button type="button" variant="outline" size="sm" onClick={() => void copyCode()}>
               <Copy className="size-4" />
               {copyState === "done"
@@ -193,6 +233,8 @@ export default function PublicSnippetPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{snippet.language}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`views ${snippet.view_count}`}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`copies ${snippet.copy_count}`}</Badge>
           {snippet.tags.map((tag) => (
             <Badge key={tag.id} variant="outline" className="max-w-32 truncate" title={tag.name.length > 20 ? tag.name : undefined}>
               {tag.name}

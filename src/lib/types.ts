@@ -14,6 +14,8 @@ export type Snippet = {
   benchmark_bytes: number | null;
   benchmark_bits: number | null;
   benchmark_lines: number | null;
+  view_count: number;
+  copy_count: number;
   created_at: string;
   updated_at: string;
 };
