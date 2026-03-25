@@ -198,7 +198,7 @@ export default function PublicSnippetPage() {
             >
               <option value="raw">raw code</option>
               <option value="markdown">markdown block</option>
-              <option value="with-line-numbers">with line numbers</option>
+              <option value="line-numbers">with line numbers</option>
             </select>
             <Button type="button" variant="outline" size="sm" onClick={() => void copyCode()}>
               <Copy className="size-4" />

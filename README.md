@@ -23,7 +23,7 @@ minimal, fast personal (and shared) snippet vault built with next.js, supabase, 
 - built-in execution playground for `python`, `cpp`, `txt`, and `md`
 - snippet benchmarks persisted on save (`chars`, `bytes`, `bits`, `lines`)
 - last edited + engagement metadata (`created_at`, `updated_at`, `view_count`, `copy_count`)
-- copy modes: raw code, markdown block, and with line numbers
+- copy modes: raw code, markdown block, and line numbers
 
 ## stack
 
@@ -165,7 +165,7 @@ npm run dev
 - edits continue to refresh `updated_at` via db trigger
 
 **copy modes**
-- choose between `raw code`, `markdown block`, and `with line numbers` before copy
+- choose between `raw code`, `markdown block`, and `line numbers` before copy
 - markdown mode output format:
   - ```cpp
   - int mid = l + (r-l)/2;

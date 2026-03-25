@@ -262,6 +262,73 @@ create policy "users can delete own snippet_tags"
   );
 
 -- ────────────────────────────────────────────
+-- rpc helpers for safe counter increments
+-- ────────────────────────────────────────────
+
+create or replace function public.increment_snippet_view(
+  p_snippet_id uuid,
+  p_public_only boolean default false
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  changed_rows integer;
+begin
+  if p_public_only then
+    update public.snippets
+    set view_count = view_count + 1
+    where id = p_snippet_id
+      and public = true;
+  else
+    update public.snippets
+    set view_count = view_count + 1
+    where id = p_snippet_id
+      and user_id = auth.uid();
+  end if;
+
+  get diagnostics changed_rows = row_count;
+  return changed_rows > 0;
+end;
+$$;
+
+create or replace function public.increment_snippet_copy(
+  p_snippet_id uuid,
+  p_public_only boolean default false
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  changed_rows integer;
+begin
+  if p_public_only then
+    update public.snippets
+    set copy_count = copy_count + 1
+    where id = p_snippet_id
+      and public = true;
+  else
+    update public.snippets
+    set copy_count = copy_count + 1
+    where id = p_snippet_id
+      and user_id = auth.uid();
+  end if;
+
+  get diagnostics changed_rows = row_count;
+  return changed_rows > 0;
+end;
+$$;
+
+revoke all on function public.increment_snippet_view(uuid, boolean) from public;
+revoke all on function public.increment_snippet_copy(uuid, boolean) from public;
+grant execute on function public.increment_snippet_view(uuid, boolean) to anon, authenticated;
+grant execute on function public.increment_snippet_copy(uuid, boolean) to anon, authenticated;
+
+-- ────────────────────────────────────────────
 -- migration: add pinned + public columns to existing db
 -- ────────────────────────────────────────────
 -- run this if you already have a snippets table:

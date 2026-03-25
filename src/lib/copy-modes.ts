@@ -1,4 +1,4 @@
-export type SnippetCopyMode = "raw" | "markdown" | "with-line-numbers";
+export type SnippetCopyMode = "raw" | "markdown" | "line-numbers";
 
 export function formatSnippetForCopy(params: {
   code: string;
@@ -8,13 +8,11 @@ export function formatSnippetForCopy(params: {
   const code = params.code ?? "";
 
   if (params.mode === "markdown") {
-    return `\
-\`\`\`${params.language || ""}
-${code}
-\`\`\``;
+    const language = params.language || "";
+    return ["```" + language, code, "```"].join("\n");
   }
 
-  if (params.mode === "with-line-numbers") {
+  if (params.mode === "line-numbers") {
     return code
       .split("\n")
       .map((line, index) => `${index + 1} | ${line}`)

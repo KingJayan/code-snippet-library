@@ -703,26 +703,18 @@ export async function getPublicSnippetById(
 async function bumpCounter(id: string, field: "view_count" | "copy_count", publicOnly = false) {
   const client = requireClient();
 
-  const selectBuilder = client.from("snippets").select(field).eq("id", id);
-  const { data, error } = await (publicOnly
-    ? selectBuilder.eq("public", true).single()
-    : selectBuilder.single());
+  const rpcName = field === "view_count" ? "increment_snippet_view" : "increment_snippet_copy";
+  const { data, error } = await client.rpc(rpcName, {
+    p_snippet_id: id,
+    p_public_only: publicOnly,
+  });
+
   if (error) {
-    throw new Error(parseSupabaseError(error) ?? `failed to read ${field}`);
+    throw new Error(parseSupabaseError(error) ?? `failed to update ${field}`);
   }
 
-  const currentValue = Number((data as Record<string, unknown>)?.[field] ?? 0);
-
-  const updateBuilder = client
-    .from("snippets")
-    .update({ [field]: currentValue + 1 })
-    .eq("id", id);
-
-  const { error: updateError } = await (publicOnly
-    ? updateBuilder.eq("public", true)
-    : updateBuilder);
-  if (updateError) {
-    throw new Error(parseSupabaseError(updateError) ?? `failed to update ${field}`);
+  if (data !== true) {
+    throw new Error(`failed to update ${field}`);
   }
 }
 

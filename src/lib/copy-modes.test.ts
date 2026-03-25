@@ -16,7 +16,7 @@ describe("formatSnippetForCopy", () => {
 
   it("returns numbered lines", () => {
     const code = "line a\nline b";
-    const out = formatSnippetForCopy({ code, language: "txt", mode: "with-line-numbers" });
+    const out = formatSnippetForCopy({ code, language: "txt", mode: "line-numbers" });
     expect(out).toBe("1 | line a\n2 | line b");
   });
 });
