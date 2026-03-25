@@ -40,6 +40,10 @@ create table public.snippets (
   code        text not null,
   pinned      boolean not null default false,
   public      boolean not null default false,
+  benchmark_chars integer,
+  benchmark_bytes integer,
+  benchmark_bits integer,
+  benchmark_lines integer,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -281,6 +285,10 @@ create policy "users can delete own snippet_tags"
 -- alter table public.snippets add column if not exists workspace_id uuid references public.workspaces(id);
 -- alter table public.snippets add column if not exists pinned boolean not null default false;
 -- alter table public.snippets add column if not exists public boolean not null default false;
+-- alter table public.snippets add column if not exists benchmark_chars integer;
+-- alter table public.snippets add column if not exists benchmark_bytes integer;
+-- alter table public.snippets add column if not exists benchmark_bits integer;
+-- alter table public.snippets add column if not exists benchmark_lines integer;
 --
 -- insert into public.workspaces (owner_id, name)
 -- select distinct user_id, 'default' from public.snippets

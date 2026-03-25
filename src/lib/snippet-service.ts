@@ -1,4 +1,5 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import { computeSnippetBenchmarks } from "@/lib/snippet-benchmarks";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type {
   ServiceResult,
@@ -250,6 +251,10 @@ function normalizeSnippet(row: SnippetRow): SnippetWithTags {
     code: row.code,
     pinned: row.pinned,
     public: row.public,
+    benchmark_chars: row.benchmark_chars,
+    benchmark_bytes: row.benchmark_bytes,
+    benchmark_bits: row.benchmark_bits,
+    benchmark_lines: row.benchmark_lines,
     created_at: row.created_at,
     updated_at: row.updated_at,
     tags,
@@ -277,6 +282,10 @@ function normalizeSnippetSummary(row: SnippetSummaryRow): SnippetSummaryWithTags
     description: row.description,
     pinned: row.pinned,
     public: row.public,
+    benchmark_chars: row.benchmark_chars,
+    benchmark_bytes: row.benchmark_bytes,
+    benchmark_bits: row.benchmark_bits,
+    benchmark_lines: row.benchmark_lines,
     created_at: row.created_at,
     updated_at: row.updated_at,
     tags,
@@ -352,7 +361,7 @@ export async function listSnippets(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, workspace_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, pinned, public, benchmark_chars, benchmark_bytes, benchmark_bits, benchmark_lines, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .order("pinned", { ascending: false })
       .order("updated_at", { ascending: false })
@@ -393,7 +402,7 @@ export async function getSnippetById(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, code, pinned, public, benchmark_chars, benchmark_bytes, benchmark_bits, benchmark_lines, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("id", id)
       .single();
@@ -429,6 +438,8 @@ export async function createSnippet(
       throw new Error("workspace is required");
     }
 
+    const benchmarks = computeSnippetBenchmarks(draft.code);
+
     const { data, error } = await client
       .from("snippets")
       .insert({
@@ -438,8 +449,12 @@ export async function createSnippet(
         language: draft.language,
         description: draft.description.trim(),
         code: draft.code,
+        benchmark_chars: benchmarks.benchmark_chars,
+        benchmark_bytes: benchmarks.benchmark_bytes,
+        benchmark_bits: benchmarks.benchmark_bits,
+        benchmark_lines: benchmarks.benchmark_lines,
       })
-      .select("id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at")
+      .select("id, user_id, workspace_id, title, language, description, code, pinned, public, benchmark_chars, benchmark_bytes, benchmark_bits, benchmark_lines, created_at, updated_at")
       .single();
 
     if (error) {
@@ -480,6 +495,7 @@ export async function updateSnippet(
   try {
     const client = requireClient();
     const userId = await requireUserId(client);
+    const benchmarks = computeSnippetBenchmarks(draft.code);
 
     const { data, error } = await client
       .from("snippets")
@@ -488,10 +504,14 @@ export async function updateSnippet(
         language: draft.language,
         description: draft.description.trim(),
         code: draft.code,
+        benchmark_chars: benchmarks.benchmark_chars,
+        benchmark_bytes: benchmarks.benchmark_bytes,
+        benchmark_bits: benchmarks.benchmark_bits,
+        benchmark_lines: benchmarks.benchmark_lines,
       })
       .eq("id", id)
       .eq("user_id", userId)
-      .select("id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at")
+      .select("id, user_id, workspace_id, title, language, description, code, pinned, public, benchmark_chars, benchmark_bytes, benchmark_bits, benchmark_lines, created_at, updated_at")
       .single();
 
     if (error) {
@@ -619,7 +639,7 @@ export async function listPublicSnippets(
     let query = client
       .from("snippets")
       .select(
-        "id, user_id, workspace_id, title, language, description, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, pinned, public, benchmark_chars, benchmark_bytes, benchmark_bits, benchmark_lines, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("public", true)
       .order("pinned", { ascending: false })
@@ -655,7 +675,7 @@ export async function getPublicSnippetById(
     const { data, error } = await client
       .from("snippets")
       .select(
-        "id, user_id, workspace_id, title, language, description, code, pinned, public, created_at, updated_at, snippet_tags(tags(id, name))"
+        "id, user_id, workspace_id, title, language, description, code, pinned, public, benchmark_chars, benchmark_bytes, benchmark_bits, benchmark_lines, created_at, updated_at, snippet_tags(tags(id, name))"
       )
       .eq("id", id)
       .eq("public", true)

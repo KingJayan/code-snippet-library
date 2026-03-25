@@ -20,6 +20,8 @@ minimal, fast personal (and shared) snippet vault built with next.js, supabase, 
 - multi-provider ai support with mode-aware prompts (`improve`, `refactor`, `debug`, `explain`)
 - optional ai similarity search (default off), ai auto-tagging, and ai docs generation
 - unified settings with a11y controls
+- built-in execution playground for `python`, `cpp`, `txt`, and `md`
+- snippet benchmarks persisted on save (`chars`, `bytes`, `bits`, `lines`)
 
 ## stack
 
@@ -77,6 +79,10 @@ SNIPS_AI_ALLOW_REMOTE_OLLAMA=0
 
 # optional: enable dev debug panel for a specific account (dev only)
 NEXT_PUBLIC_DEV_OWNER_EMAIL=
+
+# optional execution sandbox provider config
+SNIPS_EXEC_PROVIDER=piston
+SNIPS_EXEC_PISTON_URL=https://emkc.org/api/v2/piston/execute
 ```
 
 3. run sql schema in supabase sql editor
@@ -140,6 +146,16 @@ npm run dev
 - `/api/ai/chat` requires an authenticated user session and is rate-limited
 - api keys entered in ui are kept in tab session storage (not local storage)
 - provider env vars are used as secure fallback when no ui key is provided
+
+**execution playground**
+- available on snippet detail pages with code editor, input panel, run button, and output panel
+- execution returns `stdout`, `stderr`, `runtime`, and `memory`
+- authenticated and rate-limited via `/api/execute`
+
+**benchmarks**
+- computed on save and stored in snippet metadata
+- metrics include `chars`, `bytes`, `bits`, and `lines`
+- latest execution `runtime` and `memory` are shown after playground runs
 
 **settings**
 - open settings from the header action

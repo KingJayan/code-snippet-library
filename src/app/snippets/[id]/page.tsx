@@ -22,6 +22,7 @@ import { AiChatSidebar } from "@/components/ai-chat-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/code-block";
+import { SnippetPlayground } from "@/components/snippet-playground";
 import { SnippetDialog } from "@/components/snippet-dialog";
 import {
   deleteSnippet,
@@ -96,6 +97,10 @@ export default function SnippetDetailPage() {
   const [similarityLoading, setSimilarityLoading] = useState(false);
   const [similarityError, setSimilarityError] = useState<string | null>(null);
   const [similarSnippets, setSimilarSnippets] = useState<SimilarSnippetResult[]>([]);
+  const [executionStats, setExecutionStats] = useState<{
+    runtimeMs: number | null;
+    memoryKb: number | null;
+  } | null>(null);
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
 
@@ -570,6 +575,16 @@ export default function SnippetDetailPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{snippet.language}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`chars ${snippet.benchmark_chars ?? 0}`}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`bytes ${snippet.benchmark_bytes ?? 0}`}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`bits ${snippet.benchmark_bits ?? 0}`}</Badge>
+          <Badge variant="outline" className="text-[10px]">{`lines ${snippet.benchmark_lines ?? 0}`}</Badge>
+          {executionStats?.runtimeMs !== null && executionStats?.runtimeMs !== undefined && (
+            <Badge variant="outline" className="text-[10px]">{`runtime ${executionStats.runtimeMs}ms`}</Badge>
+          )}
+          {executionStats?.memoryKb !== null && executionStats?.memoryKb !== undefined && (
+            <Badge variant="outline" className="text-[10px]">{`memory ${executionStats.memoryKb}kb`}</Badge>
+          )}
           {snippet.tags.map((tag) => (
             <Badge key={tag.id} variant="outline" className="max-w-32 truncate" title={tag.name.length > 20 ? tag.name : undefined}>
               {tag.name}
@@ -607,6 +622,11 @@ export default function SnippetDetailPage() {
             </div>
           )}
           <CodeBlock code={snippet.code} language={snippet.language} />
+          <SnippetPlayground
+            initialCode={snippet.code}
+            initialLanguage={snippet.language}
+            onExecutionStats={(stats) => setExecutionStats(stats)}
+          />
 
           {similarityEnabled && (
             <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
