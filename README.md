@@ -2,7 +2,7 @@
 
 minimal, fast personal (and shared) snippet vault built with next.js, supabase, shadcn ui, and shiki.
 
-## features
+## active features list
 
 - pin important snippets to top of list
 - make snippets public and share with anyone (with public browse page)
@@ -90,21 +90,7 @@ SNIPS_EXEC_PISTON_URL=https://emkc.org/api/v2/piston/execute
 3. run sql schema in supabase sql editor
 
 - file: `supabase/schema.sql`
-- **important**: refresh api schema cache in supabase project settings → api
-<!--
-**existing database?** if you already have the snippets table, run this migration:
-
-```sql
-alter table public.snippets add column pinned boolean not null default false;
-alter table public.snippets add column public boolean not null default false;
-create index snippets_user_pinned_idx on public.snippets(user_id, pinned desc, updated_at desc);
-create index snippets_public_idx on public.snippets(public, created_at desc) where public = true;
-
-create policy "anyone can view public snippets"
-  on public.snippets for select
-  using (public = true);
-```
--->
+- **important**: refresh api schema cache in supabase project settings -> api
 
 4. start dev server
 
