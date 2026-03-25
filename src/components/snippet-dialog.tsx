@@ -275,6 +275,7 @@ export function SnippetDialog({
 							onChange={(event) => updateField("code", event.target.value)}
 							placeholder="paste code..."
 							className="min-h-72 max-h-[50vh] font-mono text-xs leading-relaxed"
+							data-vim-editor="1"
 						/>
 
 						{error && (

@@ -59,6 +59,7 @@ export function AccessibilitySettings() {
   const [compactLayout, setCompactLayout] = useState(() => readBoolSetting(SETTINGS_KEYS.compactLayout));
   const [showHints, setShowHints] = useState(() => readBoolSetting(SETTINGS_KEYS.showHints, true));
   const [wrapCodeLines, setWrapCodeLines] = useState(() => readBoolSetting(SETTINGS_KEYS.wrapCodeLines));
+  const [vimShortcuts, setVimShortcuts] = useState(() => readBoolSetting(SETTINGS_KEYS.vimShortcuts));
   const [aiPanelOpenByDefault, setAiPanelOpenByDefault] = useState(() => readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true));
   const [aiDefaultMode, setAiDefaultMode] = useState<AiMode>(() => readInitialAiMode());
   const [codeTheme, setCodeTheme] = useState(() => readStringSetting(SETTINGS_KEYS.codeTheme, "github-dark"));
@@ -123,6 +124,12 @@ export function AccessibilitySettings() {
     const next = !wrapCodeLines;
     setWrapCodeLines(next);
     writeBoolSetting(SETTINGS_KEYS.wrapCodeLines, next);
+  }
+
+  function toggleVimShortcuts() {
+    const next = !vimShortcuts;
+    setVimShortcuts(next);
+    writeBoolSetting(SETTINGS_KEYS.vimShortcuts, next);
   }
 
   function toggleAiPanelDefault() {
@@ -267,6 +274,18 @@ export function AccessibilitySettings() {
                       <p className="text-xs text-muted-foreground">avoid horizontal scroll in code blocks</p>
                     </div>
                     {wrapCodeLines ? <Check className="size-4 text-foreground" /> : null}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={toggleVimShortcuts}
+                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">vim-style keyboard shortcuts</p>
+                      <p className="text-xs text-muted-foreground">enable global vim keys and textarea vim mode</p>
+                    </div>
+                    {vimShortcuts ? <Check className="size-4 text-foreground" /> : null}
                   </button>
 
                   <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">

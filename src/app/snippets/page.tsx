@@ -179,6 +179,8 @@ export default function SnippetsPage() {
   const [workspaceNameInput, setWorkspaceNameInput] = useState("");
   const [deleteWorkspaceOpen, setDeleteWorkspaceOpen] = useState(false);
   const [showHints, setShowHints] = useState(true);
+  const [vimShortcutsEnabled, setVimShortcutsEnabled] = useState(false);
+  const [selectedSnippetIndex, setSelectedSnippetIndex] = useState(0);
 
   const listParentRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -212,11 +214,15 @@ export default function SnippetsPage() {
 
   useEffect(() => {
     setShowHints(readBoolSetting(SETTINGS_KEYS.showHints, true));
+    setVimShortcutsEnabled(readBoolSetting(SETTINGS_KEYS.vimShortcuts, false));
 
     function onSettingsChanged(event: Event) {
       const customEvent = event as CustomEvent<{ key?: string; value?: string }>;
       if (customEvent.detail?.key === SETTINGS_KEYS.showHints) {
         setShowHints(customEvent.detail.value === "1");
+      }
+      if (customEvent.detail?.key === SETTINGS_KEYS.vimShortcuts) {
+        setVimShortcutsEnabled(customEvent.detail.value === "1");
       }
     }
 
@@ -458,6 +464,15 @@ export default function SnippetsPage() {
     });
   }, [activeTag, deferredSearch, snippets]);
 
+  useEffect(() => {
+    if (filteredSnippets.length === 0) {
+      setSelectedSnippetIndex(0);
+      return;
+    }
+
+    setSelectedSnippetIndex((current) => Math.min(current, filteredSnippets.length - 1));
+  }, [filteredSnippets]);
+
   const workspaceById = useMemo(() => {
     return new Map(workspaces.map((workspace) => [workspace.id, workspace]));
   }, [workspaces]);
@@ -495,6 +510,39 @@ export default function SnippetsPage() {
     estimateSize: () => 164,
     overscan: 8,
   });
+
+  useEffect(() => {
+    if (!vimShortcutsEnabled) {
+      return;
+    }
+
+    function onVimListNavigation(event: KeyboardEvent) {
+      if (isTypingElement(event.target)) {
+        return;
+      }
+
+      if (filteredSnippets.length === 0) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key !== "j" && key !== "k") {
+        return;
+      }
+
+      event.preventDefault();
+
+      setSelectedSnippetIndex((current) => {
+        const delta = key === "j" ? 1 : -1;
+        const next = Math.max(0, Math.min(filteredSnippets.length - 1, current + delta));
+        rowVirtualizer.scrollToIndex(next, { align: "auto" });
+        return next;
+      });
+    }
+
+    window.addEventListener("keydown", onVimListNavigation);
+    return () => window.removeEventListener("keydown", onVimListNavigation);
+  }, [filteredSnippets, rowVirtualizer, vimShortcutsEnabled]);
 
   async function handleCreate(draft: SnippetDraft) {
     if (!isAuthenticated) {
@@ -952,6 +1000,7 @@ export default function SnippetsPage() {
                 >
                   <SnippetCard
                     snippet={snippet}
+                    selected={vimShortcutsEnabled && row.index === selectedSnippetIndex}
                     onTagClick={(tag) => setActiveTag(tag)}
                     onTogglePin={handleTogglePin}
                   />

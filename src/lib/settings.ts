@@ -8,6 +8,7 @@ export const SETTINGS_KEYS = {
   compactLayout: "snips.pref.compact-layout",
   showHints: "snips.pref.show-hints",
   wrapCodeLines: "snips.pref.wrap-code-lines",
+  vimShortcuts: "snips.pref.vim-shortcuts",
   codeTheme: "code-theme",
 } as const;
 

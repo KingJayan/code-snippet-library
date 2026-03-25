@@ -134,6 +134,7 @@ export function SnippetPlayground({
             onChange={(event) => setCode(event.target.value)}
             className="min-h-64 font-mono text-xs leading-relaxed"
             placeholder="write or paste runnable code"
+            data-vim-editor="1"
           />
         </label>
 

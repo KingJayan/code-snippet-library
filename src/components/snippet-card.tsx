@@ -14,6 +14,7 @@ interface SnippetCardProps {
   onTagClick?: (tagName: string) => void;
   onTogglePin?: (id: string, pinned: boolean) => void;
   detailBasePath?: "/snippets" | "/public";
+  selected?: boolean;
 }
 
 function SnippetCardRaw({
@@ -21,6 +22,7 @@ function SnippetCardRaw({
   onTagClick,
   onTogglePin,
   detailBasePath = "/snippets",
+  selected = false,
 }: SnippetCardProps) {
   const lang = LANGUAGES[snippet.language] ?? {
     label: snippet.language,
@@ -40,6 +42,9 @@ function SnippetCardRaw({
                  bg-card p-4 transition-all duration-200 ease-out motion-safe-enter vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow
                  hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-selected={selected ? "true" : "false"}
+      aria-current={selected ? "true" : undefined}
+      style={selected ? { boxShadow: "0 0 0 2px color-mix(in oklch, var(--ring) 72%, transparent 28%)" } : undefined}
       tabIndex={0}
       title={snippet.title}
     >

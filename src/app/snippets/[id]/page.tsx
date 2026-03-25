@@ -97,6 +97,7 @@ export default function SnippetDetailPage() {
   const [similarityLoading, setSimilarityLoading] = useState(false);
   const [similarityError, setSimilarityError] = useState<string | null>(null);
   const [similarSnippets, setSimilarSnippets] = useState<SimilarSnippetResult[]>([]);
+  const [vimShortcutsEnabled, setVimShortcutsEnabled] = useState(false);
   const [executionStats, setExecutionStats] = useState<{
     runtimeMs: number | null;
     memoryKb: number | null;
@@ -104,13 +105,13 @@ export default function SnippetDetailPage() {
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
 
-  function showToast(message: string, tone: ToastTone = "info") {
+  const showToast = useCallback((message: string, tone: ToastTone = "info") => {
     setToastMessage(message);
     setToastTone(tone);
     window.setTimeout(() => {
       setToastMessage((current) => (current === message ? null : current));
     }, 1800);
-  }
+  }, []);
 
   const copyCode = useCallback(async () => {
     if (!snippet) return;
@@ -125,7 +126,7 @@ export default function SnippetDetailPage() {
       showToast("copy failed", "error");
       setTimeout(() => setCopyState("idle"), 1200);
     }
-  }, [snippet]);
+  }, [showToast, snippet]);
 
   const load = useCallback(async (signal?: AbortSignal, background?: boolean) => {
     if (!snippetId) {
@@ -197,11 +198,21 @@ export default function SnippetDetailPage() {
         event.preventDefault();
         void copyCode();
       }
+
+      if (vimShortcutsEnabled && key === "y") {
+        event.preventDefault();
+        void copyCode();
+      }
+
+      if (vimShortcutsEnabled && key === "p") {
+        event.preventDefault();
+        void handleTogglePin();
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [copyCode, snippet]);
+  }, [copyCode, handleTogglePin, snippet, vimShortcutsEnabled]);
 
   useEffect(() => {
     if (!aiChatMinimized) {
@@ -220,12 +231,14 @@ export default function SnippetDetailPage() {
     if (typeof window === "undefined") return;
 
     setSimilarityEnabled(isAiSimilarityEnabled());
+    setVimShortcutsEnabled(readBoolSetting(SETTINGS_KEYS.vimShortcuts, false));
     const aiPanelOpen = readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true);
     setAiChatMinimized(!aiPanelOpen);
     setRenderAiChat(aiPanelOpen);
 
     function onSettingsChange() {
       setSimilarityEnabled(isAiSimilarityEnabled());
+      setVimShortcutsEnabled(readBoolSetting(SETTINGS_KEYS.vimShortcuts, false));
 
       const openByDefault = readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true);
       if (openByDefault) {
@@ -345,7 +358,7 @@ export default function SnippetDetailPage() {
     }
   }
 
-  async function handleTogglePin() {
+  const handleTogglePin = useCallback(async () => {
     if (!snippet) return;
 
     const newPinnedState = !snippet.pinned;
@@ -364,7 +377,7 @@ export default function SnippetDetailPage() {
     setSnippet(updated);
     writeCachedSnippet(updated);
     showToast(newPinnedState ? "pinned" : "unpinned", "success");
-  }
+  }, [showToast, snippet]);
 
   async function handleShare() {
     if (!snippet) return;

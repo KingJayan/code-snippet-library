@@ -4,6 +4,7 @@ import { AccessibilitySettings } from "@/components/accessibility-settings";
 import { DevDebugPanel } from "@/components/dev-debug-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VfxCursorTracker } from "@/components/vfx-cursor-tracker";
+import { VimShortcutsManager } from "@/components/vim-shortcuts-manager";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -72,6 +73,7 @@ export default function RootLayout({
       >
         <TooltipProvider delayDuration={200}>
           <VfxCursorTracker />
+          <VimShortcutsManager />
           {children}
           <DevDebugPanel />
           <AccessibilitySettings />
