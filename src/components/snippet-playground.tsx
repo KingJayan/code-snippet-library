@@ -4,16 +4,12 @@ import { useMemo, useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/lib/supabase";
+import {
+  executeInBrowser,
+  type BrowserExecutionResult,
+} from "@/lib/execution/browser-runner";
 
 type PlaygroundLanguage = "python" | "cpp" | "txt" | "md";
-
-type ExecutionResult = {
-  stdout: string;
-  stderr: string;
-  runtimeMs: number | null;
-  memoryKb: number | null;
-};
 
 type SnippetPlaygroundProps = {
   initialCode: string;
@@ -54,7 +50,7 @@ export function SnippetPlayground({
   const [stdin, setStdin] = useState("");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ExecutionResult | null>(null);
+  const [result, setResult] = useState<BrowserExecutionResult | null>(null);
 
   const lineCount = useMemo(() => (code.length === 0 ? 0 : code.split("\n").length), [code]);
 
@@ -63,33 +59,11 @@ export function SnippetPlayground({
     setError(null);
 
     try {
-      const session = await supabase?.auth.getSession();
-      const accessToken = session?.data.session?.access_token;
-      if (!accessToken) {
-        throw new Error("your session expired. refresh and sign in again.");
-      }
-
-      const response = await fetch("/api/execute", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          language,
-          code,
-          stdin,
-        }),
+      const payload = await executeInBrowser({
+        language,
+        code,
+        stdin,
       });
-
-      const payload = (await response.json().catch(() => ({}))) as
-        | ExecutionResult
-        | { error?: string };
-
-      if (!response.ok || !("stdout" in payload)) {
-        setResult(null);
-        throw new Error((payload as { error?: string }).error ?? "execution failed");
-      }
 
       setResult(payload);
       onExecutionStats?.({
@@ -97,6 +71,7 @@ export function SnippetPlayground({
         memoryKb: payload.memoryKb,
       });
     } catch (executionError) {
+      setResult(null);
       setError(executionError instanceof Error ? executionError.message : "execution failed");
     } finally {
       setRunning(false);
@@ -125,6 +100,10 @@ export function SnippetPlayground({
           </Button>
         </div>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        python runs locally in your browser. c++ run is disabled in hosted free mode.
+      </p>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
         <label className="flex min-h-0 flex-col gap-1.5">

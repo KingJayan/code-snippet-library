@@ -82,9 +82,9 @@ SNIPS_AI_ALLOW_REMOTE_OLLAMA=0
 # optional: enable dev debug panel for a specific account (dev only)
 NEXT_PUBLIC_DEV_OWNER_EMAIL=
 
-# optional execution sandbox provider config
+# optional server execution sandbox config (not used by default free mode)
 SNIPS_EXEC_PROVIDER=piston
-SNIPS_EXEC_PISTON_URL=https://emkc.org/api/v2/piston/execute
+SNIPS_EXEC_PISTON_URL=
 ```
 
 3. run sql schema in supabase sql editor
@@ -137,8 +137,11 @@ npm run dev
 
 **execution playground**
 - available on snippet detail pages with code editor, input panel, run button, and output panel
-- execution returns `stdout`, `stderr`, `runtime`, and `memory`
-- authenticated and rate-limited via `/api/execute`
+- python runs locally in-browser (pyodide), including stdin support
+- txt and md are local passthrough modes
+- c++ online run is disabled in hosted free mode; run c++ locally
+- execution returns `stdout`, `stderr`, `runtime`, and `memory` when available
+- `/api/execute` remains available only if you configure your own external runner
 
 **benchmarks**
 - computed on save and stored in snippet metadata
