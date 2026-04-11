@@ -20,9 +20,12 @@ import {
 } from "@/lib/settings";
 import {
   detectHardwareProfile,
-  readHardwarePreference,
+  readCustomPerformanceProfile,
+  readHardwareMode,
   writeHardwarePreference,
   applyHardwareOptimizations,
+  writeCustomPerformanceProfile,
+  type CustomPerformanceProfile,
 } from "@/lib/hardware-detection";
 
 type A11ySettings = {
@@ -69,10 +72,8 @@ export function AccessibilitySettings() {
   const [aiPanelOpenByDefault, setAiPanelOpenByDefault] = useState(() => readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true));
   const [aiDefaultMode, setAiDefaultMode] = useState<AiMode>(() => readInitialAiMode());
   const [codeTheme, setCodeTheme] = useState(() => readStringSetting(SETTINGS_KEYS.codeTheme, "github-dark"));
-  const [hardwarePreference, setHardwarePreference] = useState<"auto" | "low" | "normal">(() => {
-    const pref = readHardwarePreference();
-    return pref === null ? "auto" : pref ? "low" : "normal";
-  });
+  const [hardwarePreference, setHardwarePreference] = useState<"auto" | "low" | "normal" | "custom">(() => readHardwareMode());
+  const [customProfile, setCustomProfile] = useState<CustomPerformanceProfile>(() => readCustomPerformanceProfile());
   const [hardwareProfile, setHardwareProfile] = useState(() => detectHardwareProfile());
   const [activeGroup, setActiveGroup] = useState<SettingsGroup>("ai");
 
@@ -85,6 +86,8 @@ export function AccessibilitySettings() {
 
   useEffect(() => {
     const handleHardwarePreferenceChange = () => {
+      setHardwarePreference(readHardwareMode());
+      setCustomProfile(readCustomPerformanceProfile());
       setHardwareProfile(detectHardwareProfile());
     };
 
@@ -170,10 +173,19 @@ export function AccessibilitySettings() {
     writeStringSetting(SETTINGS_KEYS.codeTheme, theme);
   }
 
-  function updateHardwarePreference(pref: "auto" | "low" | "normal") {
+  function updateHardwarePreference(pref: "auto" | "low" | "normal" | "custom") {
     setHardwarePreference(pref);
     writeHardwarePreference(pref);
     applyHardwareOptimizations();
+  }
+
+  function toggleCustomProfileSetting(key: keyof CustomPerformanceProfile) {
+    setCustomProfile((current) => {
+      const next = { ...current, [key]: !current[key] };
+      writeCustomPerformanceProfile(next);
+      applyHardwareOptimizations();
+      return next;
+    });
   }
 
   function navButtonClass(group: SettingsGroup) {
@@ -352,20 +364,83 @@ export function AccessibilitySettings() {
                     <select
                       className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={hardwarePreference}
-                      onChange={(event) => updateHardwarePreference(event.target.value as "auto" | "low" | "normal")}
+                      onChange={(event) => updateHardwarePreference(event.target.value as "auto" | "low" | "normal" | "custom")}
                     >
                       <option value="auto">auto-detect (recommended)</option>
                       <option value="low">force low-end optimizations</option>
                       <option value="normal">force normal performance</option>
+                      <option value="custom">custom profile</option>
                     </select>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {hardwarePreference === "auto" 
                         ? "automatically optimizes based on your hardware" 
                         : hardwarePreference === "low" 
                         ? "disables visual effects like blur, sheen, and cursor tracking"
+                        : hardwarePreference === "custom"
+                        ? "use your own hardware/performance profile"
                         : "enables all visual effects"}
                     </p>
                   </label>
+
+                  {hardwarePreference === "custom" && (
+                    <div className="rounded-lg border border-border/70 bg-card px-3 py-2 space-y-2">
+                      <p className="text-sm font-medium">custom hardware/performance profile</p>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomProfileSetting("disableCursorTracking")}
+                        className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
+                      >
+                        <span>disable cursor tracking effects</span>
+                        {customProfile.disableCursorTracking ? <Check className="size-3.5" /> : null}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomProfileSetting("disableBackdropFilter")}
+                        className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
+                      >
+                        <span>disable backdrop blur</span>
+                        {customProfile.disableBackdropFilter ? <Check className="size-3.5" /> : null}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomProfileSetting("disableShadows")}
+                        className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
+                      >
+                        <span>disable shadow effects</span>
+                        {customProfile.disableShadows ? <Check className="size-3.5" /> : null}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomProfileSetting("disableSheenEffects")}
+                        className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
+                      >
+                        <span>disable sheen effects</span>
+                        {customProfile.disableSheenEffects ? <Check className="size-3.5" /> : null}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomProfileSetting("reduceAnimationDuration")}
+                        className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
+                      >
+                        <span>reduce animation durations</span>
+                        {customProfile.reduceAnimationDuration ? <Check className="size-3.5" /> : null}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCustomProfileSetting("throttleMouseEvents")}
+                        className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
+                      >
+                        <span>throttle pointer events</span>
+                        {customProfile.throttleMouseEvents ? <Check className="size-3.5" /> : null}
+                      </button>
+                    </div>
+                  )}
 
                   <div className="rounded-lg border border-border/70 bg-card px-3 py-2 text-xs text-muted-foreground space-y-1">
                     <p className="font-medium text-foreground">low-end optimizations disable:</p>

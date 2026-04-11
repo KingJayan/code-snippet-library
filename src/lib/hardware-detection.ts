@@ -22,27 +22,57 @@ export interface PerformanceRecommendations {
   throttleScrollEvents: boolean;
 }
 
+export interface CustomPerformanceProfile {
+  disableCursorTracking: boolean;
+  disableBackdropFilter: boolean;
+  disableShadows: boolean;
+  disableSheenEffects: boolean;
+  reduceAnimationDuration: boolean;
+  throttleMouseEvents: boolean;
+  throttleScrollEvents: boolean;
+}
+
 const SETTINGS_KEY = "snips.perf.low-hardware";
+const CUSTOM_PROFILE_KEY = "snips.perf.custom-profile";
+
+const DEFAULT_CUSTOM_PROFILE: CustomPerformanceProfile = {
+  disableCursorTracking: false,
+  disableBackdropFilter: false,
+  disableShadows: false,
+  disableSheenEffects: false,
+  reduceAnimationDuration: false,
+  throttleMouseEvents: false,
+  throttleScrollEvents: false,
+};
+
+type NavigatorHardware = Navigator & {
+  deviceMemory?: number;
+  connection?: {
+    effectiveType?: "4g" | "3g" | "2g" | "slow-2g";
+  };
+};
 
 export function detectHardwareProfile(): HardwareProfile {
   const userPreference = readHardwarePreference();
 
-  const navigator_ = typeof navigator !== "undefined" ? navigator : null;
+  const navigator_ = (typeof navigator !== "undefined" ? navigator : null) as NavigatorHardware | null;
   const cores = navigator_?.hardwareConcurrency ?? 0;
-  const connection = (navigator_ as any)?.connection;
-  const effectiveType = (connection?.effectiveType ?? "unknown") as any;
-  const deviceMemory = (navigator_ as any)?.deviceMemory ?? null;
+  const connection = navigator_?.connection;
+  const effectiveType = (connection?.effectiveType ?? "unknown") as HardwareProfile["effectiveType"];
+  const deviceMemory = navigator_?.deviceMemory ?? null;
 
   //detect GPU type
   let gpu: "unknown" | "integrated" | "discrete" = "unknown";
   if (typeof window !== "undefined") {
     try {
       const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      const gl =
+        (canvas.getContext("webgl") as WebGLRenderingContext | null) ||
+        (canvas.getContext("experimental-webgl") as WebGLRenderingContext | null);
       if (gl) {
-        const debugInfo = (gl as any).getExtension("WEBGL_debug_renderer_info");
+        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
         if (debugInfo) {
-          const renderer = (gl as any).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+          const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
           if (typeof renderer === "string") {
             const rendererLower = renderer.toLowerCase();
             if (rendererLower.includes("intel") || rendererLower.includes("radeon")) {
@@ -80,6 +110,21 @@ export function detectHardwareProfile(): HardwareProfile {
 export function getPerformanceRecommendations(
   profile: HardwareProfile
 ): PerformanceRecommendations {
+  const mode = readHardwareMode();
+  if (mode === "custom") {
+    const custom = readCustomPerformanceProfile();
+    return {
+      disableCursorTracking: custom.disableCursorTracking,
+      disableBackdropFilter: custom.disableBackdropFilter,
+      disableAnimations: false,
+      disableShadows: custom.disableShadows,
+      disableSheenEffects: custom.disableSheenEffects,
+      reduceAnimationDuration: custom.reduceAnimationDuration,
+      throttleMouseEvents: custom.throttleMouseEvents,
+      throttleScrollEvents: custom.throttleScrollEvents,
+    };
+  }
+
   if (!profile.isLowEnd) {
     return {
       disableCursorTracking: false,
@@ -106,23 +151,29 @@ export function getPerformanceRecommendations(
 }
 
 
-export function readHardwarePreference(): boolean | null {
-  if (typeof window === "undefined") return null;
+export function readHardwareMode(): "auto" | "low" | "normal" | "custom" {
+  if (typeof window === "undefined") return "auto";
 
   try {
     const value = window.localStorage.getItem(SETTINGS_KEY);
-    if (value === null) return null;
-    if (value === "auto") return null;
-    if (value === "low") return true;
-    if (value === "normal") return false;
-    return null;
+    if (value === "low" || value === "normal" || value === "custom") {
+      return value;
+    }
+    return "auto";
   } catch {
-    return null;
+    return "auto";
   }
 }
 
+export function readHardwarePreference(): boolean | null {
+  const mode = readHardwareMode();
+  if (mode === "low") return true;
+  if (mode === "normal") return false;
+  return null;
+}
 
-export function writeHardwarePreference(preference: "auto" | "low" | "normal") {
+
+export function writeHardwarePreference(preference: "auto" | "low" | "normal" | "custom") {
   if (typeof window === "undefined") return;
 
   try {
@@ -130,6 +181,42 @@ export function writeHardwarePreference(preference: "auto" | "low" | "normal") {
     window.dispatchEvent(
       new CustomEvent("snips-hardware-preference-changed", {
         detail: { preference },
+      })
+    );
+  } catch {
+    return;
+  }
+}
+
+export function readCustomPerformanceProfile(): CustomPerformanceProfile {
+  if (typeof window === "undefined") return DEFAULT_CUSTOM_PROFILE;
+
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_PROFILE_KEY);
+    if (!raw) return DEFAULT_CUSTOM_PROFILE;
+    const parsed = JSON.parse(raw) as Partial<CustomPerformanceProfile>;
+    return {
+      disableCursorTracking: !!parsed.disableCursorTracking,
+      disableBackdropFilter: !!parsed.disableBackdropFilter,
+      disableShadows: !!parsed.disableShadows,
+      disableSheenEffects: !!parsed.disableSheenEffects,
+      reduceAnimationDuration: !!parsed.reduceAnimationDuration,
+      throttleMouseEvents: !!parsed.throttleMouseEvents,
+      throttleScrollEvents: !!parsed.throttleScrollEvents,
+    };
+  } catch {
+    return DEFAULT_CUSTOM_PROFILE;
+  }
+}
+
+export function writeCustomPerformanceProfile(profile: CustomPerformanceProfile) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(CUSTOM_PROFILE_KEY, JSON.stringify(profile));
+    window.dispatchEvent(
+      new CustomEvent("snips-hardware-preference-changed", {
+        detail: { preference: "custom", profile },
       })
     );
   } catch {

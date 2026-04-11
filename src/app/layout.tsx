@@ -66,12 +66,27 @@ export default function RootLayout({
 
   (function(){
     var userPref = null;
+    var mode = 'auto';
+    var custom = null;
     try { 
       var stored = localStorage.getItem('snips.perf.low-hardware');
+      if (stored === 'custom') mode = 'custom';
       if (stored === 'auto') userPref = null;
       if (stored === 'low') userPref = true;
       if (stored === 'normal') userPref = false;
+      if (stored === 'low' || stored === 'normal') mode = stored;
+      var customRaw = localStorage.getItem('snips.perf.custom-profile');
+      if (customRaw) custom = JSON.parse(customRaw);
     } catch (e) {}
+
+    if (mode === 'custom' && custom) {
+      if (custom.disableCursorTracking) root.classList.add('low-hw-no-cursor-tracking');
+      if (custom.disableBackdropFilter) root.classList.add('low-hw-no-backdrop-filter');
+      if (custom.disableShadows) root.classList.add('low-hw-no-shadows');
+      if (custom.disableSheenEffects) root.classList.add('low-hw-no-sheen');
+      if (custom.reduceAnimationDuration) root.classList.add('low-hw-reduce-animations');
+      return;
+    }
 
     // Auto-detect low-end hardware
     var isLowEnd = userPref !== false && (userPref === true || 

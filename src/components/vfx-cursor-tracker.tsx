@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import {
   detectHardwareProfile,
   getPerformanceRecommendations,
@@ -8,10 +8,18 @@ import {
 } from "@/lib/hardware-detection";
 
 export function VfxCursorTracker() {
-  const recommendations = useMemo(() => {
-    const profile = detectHardwareProfile();
-    return getPerformanceRecommendations(profile);
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    const handlePreferenceChange = () => setVersion((current) => current + 1);
+    window.addEventListener("snips-hardware-preference-changed", handlePreferenceChange);
+    return () => {
+      window.removeEventListener("snips-hardware-preference-changed", handlePreferenceChange);
+    };
   }, []);
+
+  const profile = detectHardwareProfile();
+  const recommendations = getPerformanceRecommendations(profile);
 
   useEffect(() => {
     if (recommendations.disableCursorTracking) {
@@ -81,7 +89,7 @@ export function VfxCursorTracker() {
       document.removeEventListener("pointerover", updateSheen as EventListener, true);
       document.removeEventListener("pointerleave", onPointerLeave, true);
     };
-  }, [recommendations]);
+  }, [recommendations.disableCursorTracking, recommendations.throttleMouseEvents, version]);
 
   return null;
 }
