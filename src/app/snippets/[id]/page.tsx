@@ -22,10 +22,12 @@ import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { AiChatSidebar } from "@/components/ai-chat-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CodeBlock } from "@/components/code-block";
 import { WorkspaceSideNav } from "@/components/workspace-side-nav";
-import { SnippetDialog } from "@/components/snippet-dialog";
+import { LANGUAGE_OPTIONS } from "@/lib/constants";
 import {
   deleteSnippet,
   getSnippetById,
@@ -89,7 +91,11 @@ export default function SnippetDetailPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
+  const [editingMode, setEditingMode] = useState(false);
+  const [editingDraft, setEditingDraft] = useState<SnippetDraft | null>(null);
+  const [editingError, setEditingError] = useState<string | null>(null);
+  const [editingSaving, setEditingSaving] = useState(false);
+  const [editingTagsInput, setEditingTagsInput] = useState<string>("");
   const [deleting, setDeleting] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
   const [shareState, setShareState] = useState<"idle" | "done" | "failed">("idle");
@@ -211,15 +217,28 @@ export default function SnippetDetailPage() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (!snippet || isTypingElement(event.target)) {
+      if (!snippet) {
         return;
       }
 
       const key = event.key.toLowerCase();
+      const isEditableElement = isTypingElement(event.target);
+
+      if (key === "escape" && editingMode) {
+        event.preventDefault();
+        cancelEditing();
+        return;
+      }
+
+      if (isEditableElement) {
+        return;
+      }
 
       if (key === "e") {
         event.preventDefault();
-        setEditOpen(true);
+        if (!editingMode) {
+          startEditing();
+        }
       }
 
       if (key === "c") {
@@ -262,7 +281,7 @@ export default function SnippetDetailPage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [copyCode, showToast, snippet, vimShortcutsEnabled]);
+  }, [copyCode, showToast, snippet, vimShortcutsEnabled, editingMode]);
 
   useEffect(() => {
     if (!aiChatMinimized) {
@@ -350,10 +369,69 @@ export default function SnippetDetailPage() {
     return null;
   }
 
+  function startEditing() {
+    if (!snippet) return;
+    setEditingMode(true);
+    setEditingDraft({
+      title: snippet.title,
+      language: snippet.language,
+      description: snippet.description,
+      code: aiCodeOverride || snippet.code,
+      tags: snippet.tags.map((t) => t.name),
+    });
+    setEditingTagsInput(snippet.tags.map((t) => t.name).join(", "));
+    setEditingError(null);
+  }
+
+  function cancelEditing() {
+    setEditingMode(false);
+    setEditingDraft(null);
+    setEditingTagsInput("");
+    setEditingError(null);
+  }
+
+  async function saveEditing() {
+    if (!editingDraft) return;
+
+    const tags = [...new Set(
+      editingTagsInput
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+    )];
+
+    if (!editingDraft.title.trim()) {
+      setEditingError("title is required");
+      return;
+    }
+
+    if (!editingDraft.code.trim()) {
+      setEditingError("code is required");
+      return;
+    }
+
+    setEditingSaving(true);
+    setEditingError(null);
+
+    const error = await handleEdit({
+      ...editingDraft,
+      tags,
+    });
+
+    if (!error) {
+      setEditingMode(false);
+      setAiCodeOverride(null);
+    }
+
+    setEditingSaving(false);
+  }
+
   function applyAiCodeSuggestion(nextCode: string) {
     setAiCodeOverride(nextCode);
-    setEditOpen(true);
     showToast("ai suggestion loaded into editor", "success");
+    window.setTimeout(() => {
+      startEditing();
+    }, 100);
   }
 
   async function handleFindSimilar() {
@@ -673,7 +751,7 @@ export default function SnippetDetailPage() {
                     type="button"
                     variant="outline"
                     size="icon-sm"
-                    onClick={() => setEditOpen(true)}
+                    onClick={() => startEditing()}
                     aria-label="edit"
                   >
                     <Pencil className="size-4" />
@@ -702,50 +780,132 @@ export default function SnippetDetailPage() {
         </div>
       </section>
 
-      <header className="space-y-2 rounded-2xl border border-border/70 bg-card/70 p-3 sm:space-y-3 sm:p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
-            {snippet.description && (
-              <p className="text-sm text-muted-foreground">{snippet.description}</p>
+      <header className={`space-y-2 rounded-2xl border border-border/70 p-3 sm:space-y-3 sm:p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow ${
+        editingMode ? "bg-card/80 border-accent/50" : "bg-card/70"
+      }`}>
+        {editingMode && editingDraft ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-tight text-muted-foreground">editing snippet</span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelEditing}
+                  disabled={editingSaving}
+                >
+                  cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={() => void saveEditing()}
+                  disabled={editingSaving}
+                >
+                  {editingSaving ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+                  {editingSaving ? "saving..." : "save"}
+                </Button>
+              </div>
+            </div>
+
+            {editingError && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {editingError}
+              </p>
             )}
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">title</span>
+              <Input
+                value={editingDraft.title}
+                onChange={(e) => setEditingDraft({ ...editingDraft, title: e.target.value })}
+                placeholder="title"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">description</span>
+              <Textarea
+                value={editingDraft.description}
+                onChange={(e) => setEditingDraft({ ...editingDraft, description: e.target.value })}
+              placeholder="description (optional)"
+                className="h-16 resize-none"
+              />
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">language</span>
+                <select
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={editingDraft.language}
+                  onChange={(e) => setEditingDraft({ ...editingDraft, language: e.target.value })}
+                >
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <option key={lang.value} value={lang.value}>{lang.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">tags (comma separated)</span>
+                <Input
+                  value={editingTagsInput}
+                  onChange={(e) => setEditingTagsInput(e.target.value)}
+                  placeholder="react, typescript"
+                />
+              </label>
+            </div>
           </div>
-          {snippet.public && (
-            <Badge variant="default" className="shrink-0">
-              <Globe className="size-3 mr-1" />
-              public
-            </Badge>
-          )}
-        </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2 flex-1">
+                <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
+                {snippet.description && (
+                  <p className="text-sm text-muted-foreground">{snippet.description}</p>
+                )}
+              </div>
+              {snippet.public && (
+                <Badge variant="default" className="shrink-0">
+                  <Globe className="size-3 mr-1" />
+                  public
+                </Badge>
+              )}
+            </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{snippet.language}</Badge>
-          <Badge variant="outline" className="text-[10px]">{`chars ${snippet.benchmark_chars ?? 0}`}</Badge>
-          <Badge variant="outline" className="text-[10px]">{`bytes ${snippet.benchmark_bytes ?? 0}`}</Badge>
-          <Badge variant="outline" className="text-[10px]">{`bits ${snippet.benchmark_bits ?? 0}`}</Badge>
-          <Badge variant="outline" className="text-[10px]">{`lines ${snippet.benchmark_lines ?? 0}`}</Badge>
-          <Badge variant="outline" className="text-[10px]">{`views ${snippet.view_count}`}</Badge>
-          <Badge variant="outline" className="text-[10px]">{`copies ${snippet.copy_count}`}</Badge>
-          {executionStats?.runtimeMs !== null && executionStats?.runtimeMs !== undefined && (
-            <Badge variant="outline" className="text-[10px]">{`runtime ${executionStats.runtimeMs}ms`}</Badge>
-          )}
-          {executionStats?.memoryKb !== null && executionStats?.memoryKb !== undefined && (
-            <Badge variant="outline" className="text-[10px]">{`memory ${executionStats.memoryKb}kb`}</Badge>
-          )}
-          {snippet.tags.map((tag) => (
-            <Badge key={tag.id} variant="outline" className="max-w-32 truncate" title={tag.name.length > 20 ? tag.name : undefined}>
-              {tag.name}
-            </Badge>
-          ))}
-          <span className="ml-auto text-xs text-muted-foreground">
-            {refreshing ? "refreshing..." : `updated ${timeAgo(snippet.updated_at)}`}
-          </span>
-        </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{snippet.language}</Badge>
+              <Badge variant="outline" className="text-[10px]">{`chars ${snippet.benchmark_chars ?? 0}`}</Badge>
+              <Badge variant="outline" className="text-[10px]">{`bytes ${snippet.benchmark_bytes ?? 0}`}</Badge>
+              <Badge variant="outline" className="text-[10px]">{`bits ${snippet.benchmark_bits ?? 0}`}</Badge>
+              <Badge variant="outline" className="text-[10px]">{`lines ${snippet.benchmark_lines ?? 0}`}</Badge>
+              <Badge variant="outline" className="text-[10px]">{`views ${snippet.view_count}`}</Badge>
+              <Badge variant="outline" className="text-[10px]">{`copies ${snippet.copy_count}`}</Badge>
+              {executionStats?.runtimeMs !== null && executionStats?.runtimeMs !== undefined && (
+                <Badge variant="outline" className="text-[10px]">{`runtime ${executionStats.runtimeMs}ms`}</Badge>
+              )}
+              {executionStats?.memoryKb !== null && executionStats?.memoryKb !== undefined && (
+                <Badge variant="outline" className="text-[10px]">{`memory ${executionStats.memoryKb}kb`}</Badge>
+              )}
+              {snippet.tags.map((tag) => (
+                <Badge key={tag.id} variant="outline" className="max-w-32 truncate" title={tag.name.length > 20 ? tag.name : undefined}>
+                  {tag.name}
+                </Badge>
+              ))}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {refreshing ? "refreshing..." : `updated ${timeAgo(snippet.updated_at)}`}
+              </span>
+            </div>
 
-        {actionError && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {actionError}
-          </p>
+            {actionError && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {actionError}
+              </p>
+            )}
+          </>
         )}
       </header>
 
@@ -786,11 +946,25 @@ export default function SnippetDetailPage() {
             </p>
           </section>
 
-          <CodeBlock
-            code={snippet.code}
-            language={snippet.language}
-            className="h-[50vh] min-h-[280px] sm:h-[56vh] sm:min-h-[360px] lg:h-[62vh] lg:max-h-[780px]"
-          />
+          {editingMode && editingDraft ? (
+            <section className="rounded-2xl border border-border/70 border-accent/50 bg-card/70 p-3 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
+              <label className="flex flex-col gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">code</span>
+                <Textarea
+                  value={editingDraft.code}
+                  onChange={(e) => setEditingDraft({ ...editingDraft, code: e.target.value })}
+                  className="h-[50vh] min-h-[280px] sm:h-[56vh] sm:min-h-[360px] lg:h-[62vh] lg:max-h-[780px] font-mono text-sm resize-none"
+                  spellCheck="false"
+                />
+              </label>
+            </section>
+          ) : (
+            <CodeBlock
+              code={snippet.code}
+              language={snippet.language}
+              className="h-[50vh] min-h-[280px] sm:h-[56vh] sm:min-h-[360px] lg:h-[62vh] lg:max-h-[780px]"
+            />
+          )}
 
           {similarityEnabled && (
             <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
@@ -851,19 +1025,6 @@ export default function SnippetDetailPage() {
           </div>
         )}
       </section>
-
-      <SnippetDialog
-        key={`${snippet.id}-${editOpen ? "edit-open" : "edit-closed"}-${aiCodeOverride ? aiCodeOverride.length : 0}`}
-        open={editOpen}
-        onOpenChange={(open) => {
-          setEditOpen(open);
-          if (!open) {
-            setAiCodeOverride(null);
-          }
-        }}
-        initialSnippet={aiCodeOverride ? { ...snippet, code: aiCodeOverride } : snippet}
-        onSave={handleEdit}
-      />
     </main>
   );
 }
