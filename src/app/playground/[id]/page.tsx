@@ -86,7 +86,7 @@ export default function PlaygroundPage() {
       <WorkspaceSideNav compactSnipsOnly snippetsHref="/snippets" showPublicLink={false} showSnippetsLink />
 
       <header className="sticky top-0 border-b border-border/60 bg-background/95 backdrop-blur-sm vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
-        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
+        <div className="mx-auto max-w-4xl px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold">{snippet.title || "playground"}</h1>
@@ -104,7 +104,7 @@ export default function PlaygroundPage() {
       </header>
 
       <main className="flex-1 animate-subtle-fade-up">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-6">
           <SnippetPlayground
             initialCode={snippet.code}
             initialLanguage={snippet.language}

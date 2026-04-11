@@ -177,10 +177,10 @@ export default function PublicSnippetPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-8 motion-safe-enter">
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-6 sm:gap-4 sm:py-8 motion-safe-enter">
       <WorkspaceSideNav compactSnipsOnly snippetsHref="/snips" showPublicLink={false} showSnippetsLink />
 
-      <section className="sticky top-3 z-20 rounded-xl border border-border/70 bg-card/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/70 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
+      <section className="sticky top-2 z-20 rounded-2xl border border-border/70 bg-card/90 p-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow sm:p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link href="/snippets" className="text-sm text-muted-foreground hover:text-foreground">
             <span className="inline-flex items-center gap-1">

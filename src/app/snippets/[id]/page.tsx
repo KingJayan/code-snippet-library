@@ -547,7 +547,7 @@ export default function SnippetDetailPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-6 sm:gap-6 sm:py-8">
       <InlineToast message={toastMessage} tone={toastTone} />
 
       <WorkspaceSideNav 
@@ -558,18 +558,18 @@ export default function SnippetDetailPage() {
         playgroundSnippetId={snippet.id}
       />
 
-      <section className="sticky top-3 z-20 rounded-xl border border-border/70 bg-card/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/70 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Link href="/snippets" className="text-sm text-muted-foreground hover:text-foreground">
+      <section className="sticky top-2 z-20 rounded-2xl border border-border/70 bg-card/90 p-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow sm:p-3">
+        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+          <Link href="/snippets" className="text-xs sm:text-sm text-muted-foreground hover:text-foreground">
             <span className="inline-flex items-center gap-1">
               <ArrowLeft className="size-4" />
               back
             </span>
           </Link>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <select
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-7 sm:h-8 rounded-md border border-input bg-background px-1.5 sm:px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={copyMode}
               onChange={(event) => setCopyMode(event.target.value as SnippetCopyMode)}
               aria-label="copy mode"
@@ -702,7 +702,7 @@ export default function SnippetDetailPage() {
         </div>
       </section>
 
-      <header className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
+      <header className="space-y-2 rounded-2xl border border-border/70 bg-card/70 p-3 sm:space-y-3 sm:p-4 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2 flex-1">
             <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
@@ -749,8 +749,8 @@ export default function SnippetDetailPage() {
         )}
       </header>
 
-      <section className={renderAiChat ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]" : "space-y-3"}>
-        <div className="space-y-3">
+      <section className={renderAiChat ? "grid items-start gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_380px]" : "space-y-3"}>
+        <div className="space-y-2 sm:space-y-3">
           {aiChatMinimized && (
             <div className="flex justify-end animate-subtle-fade-up">
               <Button
@@ -789,7 +789,7 @@ export default function SnippetDetailPage() {
           <CodeBlock
             code={snippet.code}
             language={snippet.language}
-            className="h-[62vh] min-h-[360px] max-h-[780px]"
+            className="h-[50vh] min-h-[280px] sm:h-[56vh] sm:min-h-[360px] lg:h-[62vh] lg:max-h-[780px]"
           />
 
           {similarityEnabled && (
@@ -837,7 +837,7 @@ export default function SnippetDetailPage() {
 
         {renderAiChat && (
           <div
-            className={`h-[62vh] min-h-[520px] max-h-[780px] overflow-hidden transition-all duration-300 ease-out xl:sticky xl:top-24 ${
+            className={`h-[50vh] min-h-[320px] sm:h-[56vh] sm:min-h-[420px] lg:h-[62vh] lg:min-h-[520px] lg:max-h-[780px] overflow-hidden transition-all duration-300 ease-out xl:sticky xl:top-24 ${
               aiChatMinimized
                 ? "pointer-events-none max-h-0 translate-y-2 opacity-0"
                 : "translate-y-0 opacity-100"
