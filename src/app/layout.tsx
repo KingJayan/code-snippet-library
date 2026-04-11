@@ -64,6 +64,19 @@ export default function RootLayout({
     root.classList.add('pref-compact');
   }
 
+  var uiDensity = localStorage.getItem('snips.pref.ui-density');
+  if (uiDensity === 'compact') {
+    root.classList.add('pref-density-compact');
+  }
+
+  var animationLevel = localStorage.getItem('snips.pref.animation-level');
+  if (animationLevel === 'reduced') {
+    root.classList.add('pref-anim-reduced');
+  }
+  if (animationLevel === 'minimal') {
+    root.classList.add('pref-anim-minimal');
+  }
+
   (function(){
     var userPref = null;
     var mode = 'auto';

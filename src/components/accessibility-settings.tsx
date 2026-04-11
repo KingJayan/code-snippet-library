@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility, Zap, Link, Github } from "lucide-react";
+import {
+  Accessibility,
+  Check,
+  Github,
+  Link,
+  Palette,
+  Search,
+  Settings2,
+  SlidersHorizontal,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,12 +30,13 @@ import {
   writeStringSetting,
 } from "@/lib/settings";
 import {
+  applyHardwareOptimizations,
   detectHardwareProfile,
+  getPerformanceRecommendations,
   readCustomPerformanceProfile,
   readHardwareMode,
-  writeHardwarePreference,
-  applyHardwareOptimizations,
   writeCustomPerformanceProfile,
+  writeHardwarePreference,
   type CustomPerformanceProfile,
 } from "@/lib/hardware-detection";
 
@@ -33,6 +45,17 @@ type A11ySettings = {
   largerText: boolean;
   strongerFocus: boolean;
 };
+
+type PersonalizationPreset = "balanced" | "focused" | "expressive" | "custom";
+type UiDensity = "comfortable" | "compact";
+type AnimationLevel = "full" | "reduced" | "minimal";
+type RecentChange = {
+  key: string;
+  label: string;
+  at: number;
+};
+
+const RECENT_CHANGES_KEY = "snips.pref.recent-changes";
 
 const CODE_THEME_OPTIONS = [
   { value: "github-dark", label: "github dark" },
@@ -44,9 +67,46 @@ const CODE_THEME_OPTIONS = [
 ];
 
 const AI_MODE_OPTIONS = ["improve", "refactor", "debug", "explain"] as const;
+const PERSONALIZATION_PRESETS: Array<{ value: PersonalizationPreset; label: string }> = [
+  { value: "balanced", label: "balanced" },
+  { value: "focused", label: "focused" },
+  { value: "expressive", label: "expressive" },
+  { value: "custom", label: "custom" },
+];
+
+const SETTINGS_LABELS: Record<string, string> = {
+  [SETTINGS_KEYS.aiSimilaritySearch]: "ai similarity search",
+  [SETTINGS_KEYS.aiPanelOpenByDefault]: "open ai panel by default",
+  [SETTINGS_KEYS.aiDefaultMode]: "default ai mode",
+  [SETTINGS_KEYS.compactLayout]: "compact layout",
+  [SETTINGS_KEYS.showHints]: "show productivity hints",
+  [SETTINGS_KEYS.wrapCodeLines]: "wrap long code lines",
+  [SETTINGS_KEYS.vimShortcuts]: "vim shortcuts",
+  [SETTINGS_KEYS.codeTheme]: "default code theme",
+  [SETTINGS_KEYS.reducedMotion]: "reduced ui motion",
+  [SETTINGS_KEYS.largerText]: "larger text",
+  [SETTINGS_KEYS.strongerFocus]: "stronger focus outlines",
+  [SETTINGS_KEYS.personalizationPreset]: "personalization preset",
+  [SETTINGS_KEYS.uiDensity]: "ui density",
+  [SETTINGS_KEYS.animationLevel]: "animation level",
+  [SETTINGS_KEYS.lowHardwareMode]: "performance mode",
+  "snips.perf.custom.disableCursorTracking": "disable cursor tracking",
+  "snips.perf.custom.disableBackdropFilter": "disable backdrop blur",
+  "snips.perf.custom.disableShadows": "disable shadows",
+  "snips.perf.custom.disableSheenEffects": "disable sheen effects",
+  "snips.perf.custom.reduceAnimationDuration": "reduce animation durations",
+  "snips.perf.custom.throttleMouseEvents": "throttle pointer events",
+  "snips.perf.custom.throttleScrollEvents": "throttle scroll events",
+};
 
 type AiMode = (typeof AI_MODE_OPTIONS)[number];
-type SettingsGroup = "ai" | "preferences" | "accessibility" | "performance" | "credits";
+type SettingsGroup =
+  | "personalization"
+  | "ai"
+  | "preferences"
+  | "accessibility"
+  | "performance"
+  | "credits";
 
 function readInitialA11ySettings(): A11ySettings {
   return {
@@ -61,8 +121,23 @@ function readInitialAiMode(): AiMode {
   return AI_MODE_OPTIONS.includes(savedMode as AiMode) ? (savedMode as AiMode) : "improve";
 }
 
+function readInitialRecentChanges(): RecentChange[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(RECENT_CHANGES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as RecentChange[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => typeof item?.key === "string" && typeof item?.label === "string").slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
 export function AccessibilitySettings() {
   const [open, setOpen] = useState(false);
+  const [settingsQuery, setSettingsQuery] = useState("");
   const [settings, setSettings] = useState<A11ySettings>(() => readInitialA11ySettings());
   const [aiSimilaritySearch, setAiSimilaritySearch] = useState(() => readBoolSetting(SETTINGS_KEYS.aiSimilaritySearch));
   const [compactLayout, setCompactLayout] = useState(() => readBoolSetting(SETTINGS_KEYS.compactLayout));
@@ -72,28 +147,93 @@ export function AccessibilitySettings() {
   const [aiPanelOpenByDefault, setAiPanelOpenByDefault] = useState(() => readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true));
   const [aiDefaultMode, setAiDefaultMode] = useState<AiMode>(() => readInitialAiMode());
   const [codeTheme, setCodeTheme] = useState(() => readStringSetting(SETTINGS_KEYS.codeTheme, "github-dark"));
+  const [personalizationPreset, setPersonalizationPreset] = useState<PersonalizationPreset>(() => {
+    const saved = readStringSetting(SETTINGS_KEYS.personalizationPreset, "balanced");
+    return PERSONALIZATION_PRESETS.some((item) => item.value === saved)
+      ? (saved as PersonalizationPreset)
+      : "balanced";
+  });
+  const [uiDensity, setUiDensity] = useState<UiDensity>(() => {
+    const saved = readStringSetting(SETTINGS_KEYS.uiDensity, "comfortable");
+    return saved === "compact" ? "compact" : "comfortable";
+  });
+  const [animationLevel, setAnimationLevel] = useState<AnimationLevel>(() => {
+    const saved = readStringSetting(SETTINGS_KEYS.animationLevel, "full");
+    return saved === "reduced" || saved === "minimal" ? saved : "full";
+  });
   const [hardwarePreference, setHardwarePreference] = useState<"auto" | "low" | "normal" | "custom">(() => readHardwareMode());
   const [customProfile, setCustomProfile] = useState<CustomPerformanceProfile>(() => readCustomPerformanceProfile());
   const [hardwareProfile, setHardwareProfile] = useState(() => detectHardwareProfile());
-  const [activeGroup, setActiveGroup] = useState<SettingsGroup>("ai");
+  const [activeGroup, setActiveGroup] = useState<SettingsGroup>("personalization");
+  const [recentChanges, setRecentChanges] = useState<RecentChange[]>(() => readInitialRecentChanges());
+
+  const normalizedQuery = settingsQuery.trim().toLowerCase();
+  const perfRecommendations = useMemo(
+    () => getPerformanceRecommendations(hardwareProfile),
+    [hardwareProfile]
+  );
+  const recommendedPerformanceMode = hardwareProfile.isLowEnd ? "low" : "normal";
+
+  function matchesQuery(...terms: string[]) {
+    if (!normalizedQuery) return true;
+    return terms.some((term) => term.toLowerCase().includes(normalizedQuery));
+  }
+
+  function pushRecentChange(key: string, fallbackLabel?: string) {
+    const label = SETTINGS_LABELS[key] ?? fallbackLabel ?? key;
+    setRecentChanges((current) => {
+      const next: RecentChange[] = [
+        { key, label, at: Date.now() },
+        ...current.filter((entry) => entry.key !== key),
+      ].slice(0, 6);
+
+      try {
+        window.localStorage.setItem(RECENT_CHANGES_KEY, JSON.stringify(next));
+      } catch {
+        return next;
+      }
+
+      return next;
+    });
+  }
 
   useEffect(() => {
     applyRootClass("a11y-reduce-motion", settings.reducedMotion);
     applyRootClass("a11y-large-text", settings.largerText);
     applyRootClass("a11y-strong-focus", settings.strongerFocus);
     applyRootClass("pref-compact", compactLayout);
-  }, [compactLayout, settings.largerText, settings.reducedMotion, settings.strongerFocus]);
+    applyRootClass("pref-density-compact", uiDensity === "compact");
+    applyRootClass("pref-anim-reduced", animationLevel === "reduced");
+    applyRootClass("pref-anim-minimal", animationLevel === "minimal");
+  }, [
+    animationLevel,
+    compactLayout,
+    settings.largerText,
+    settings.reducedMotion,
+    settings.strongerFocus,
+    uiDensity,
+  ]);
 
   useEffect(() => {
     const handleHardwarePreferenceChange = () => {
       setHardwarePreference(readHardwareMode());
       setCustomProfile(readCustomPerformanceProfile());
       setHardwareProfile(detectHardwareProfile());
+      pushRecentChange(SETTINGS_KEYS.lowHardwareMode, "performance mode");
+    };
+
+    const handleSettingsChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{ key?: string }>;
+      if (!customEvent.detail?.key) return;
+      pushRecentChange(customEvent.detail.key);
     };
 
     window.addEventListener("snips-hardware-preference-changed", handleHardwarePreferenceChange);
+    window.addEventListener("snips-settings-changed", handleSettingsChanged as EventListener);
+
     return () => {
       window.removeEventListener("snips-hardware-preference-changed", handleHardwarePreferenceChange);
+      window.removeEventListener("snips-settings-changed", handleSettingsChanged as EventListener);
     };
   }, []);
 
@@ -101,6 +241,82 @@ export function AccessibilitySettings() {
     const a11yCount = Object.values(settings).filter(Boolean).length;
     return a11yCount + (aiSimilaritySearch ? 1 : 0);
   }, [aiSimilaritySearch, settings]);
+
+  function applyPersonalizationPreset(preset: PersonalizationPreset) {
+    setPersonalizationPreset(preset);
+    writeStringSetting(SETTINGS_KEYS.personalizationPreset, preset);
+
+    if (preset === "custom") return;
+
+    const nextValues =
+      preset === "focused"
+        ? {
+            density: "compact" as UiDensity,
+            motion: "reduced" as AnimationLevel,
+            hints: false,
+            aiPanel: false,
+            vim: true,
+            compact: true,
+          }
+        : preset === "expressive"
+        ? {
+            density: "comfortable" as UiDensity,
+            motion: "full" as AnimationLevel,
+            hints: true,
+            aiPanel: true,
+            vim: false,
+            compact: false,
+          }
+        : {
+            density: "comfortable" as UiDensity,
+            motion: "full" as AnimationLevel,
+            hints: true,
+            aiPanel: true,
+            vim: false,
+            compact: false,
+          };
+
+    setUiDensity(nextValues.density);
+    setAnimationLevel(nextValues.motion);
+    setShowHints(nextValues.hints);
+    setAiPanelOpenByDefault(nextValues.aiPanel);
+    setVimShortcuts(nextValues.vim);
+    setCompactLayout(nextValues.compact);
+
+    writeStringSetting(SETTINGS_KEYS.uiDensity, nextValues.density);
+    writeStringSetting(SETTINGS_KEYS.animationLevel, nextValues.motion);
+    writeBoolSetting(SETTINGS_KEYS.showHints, nextValues.hints);
+    writeBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, nextValues.aiPanel);
+    writeBoolSetting(SETTINGS_KEYS.vimShortcuts, nextValues.vim);
+    writeBoolSetting(SETTINGS_KEYS.compactLayout, nextValues.compact);
+    applyRootClass("pref-compact", nextValues.compact);
+    applyRootClass("pref-density-compact", nextValues.density === "compact");
+    applyRootClass("pref-anim-reduced", nextValues.motion === "reduced");
+    applyRootClass("pref-anim-minimal", nextValues.motion === "minimal");
+  }
+
+  function updateUiDensity(nextDensity: UiDensity) {
+    setUiDensity(nextDensity);
+    writeStringSetting(SETTINGS_KEYS.uiDensity, nextDensity);
+    applyRootClass("pref-density-compact", nextDensity === "compact");
+
+    if (personalizationPreset !== "custom") {
+      setPersonalizationPreset("custom");
+      writeStringSetting(SETTINGS_KEYS.personalizationPreset, "custom");
+    }
+  }
+
+  function updateAnimationLevel(nextLevel: AnimationLevel) {
+    setAnimationLevel(nextLevel);
+    writeStringSetting(SETTINGS_KEYS.animationLevel, nextLevel);
+    applyRootClass("pref-anim-reduced", nextLevel === "reduced");
+    applyRootClass("pref-anim-minimal", nextLevel === "minimal");
+
+    if (personalizationPreset !== "custom") {
+      setPersonalizationPreset("custom");
+      writeStringSetting(SETTINGS_KEYS.personalizationPreset, "custom");
+    }
+  }
 
   function toggleSetting<K extends keyof A11ySettings>(key: K) {
     setSettings((current) => {
@@ -137,12 +353,22 @@ export function AccessibilitySettings() {
     setCompactLayout(next);
     writeBoolSetting(SETTINGS_KEYS.compactLayout, next);
     applyRootClass("pref-compact", next);
+
+    if (personalizationPreset !== "custom") {
+      setPersonalizationPreset("custom");
+      writeStringSetting(SETTINGS_KEYS.personalizationPreset, "custom");
+    }
   }
 
   function toggleShowHints() {
     const next = !showHints;
     setShowHints(next);
     writeBoolSetting(SETTINGS_KEYS.showHints, next);
+
+    if (personalizationPreset !== "custom") {
+      setPersonalizationPreset("custom");
+      writeStringSetting(SETTINGS_KEYS.personalizationPreset, "custom");
+    }
   }
 
   function toggleWrapCodeLines() {
@@ -155,12 +381,22 @@ export function AccessibilitySettings() {
     const next = !vimShortcuts;
     setVimShortcuts(next);
     writeBoolSetting(SETTINGS_KEYS.vimShortcuts, next);
+
+    if (personalizationPreset !== "custom") {
+      setPersonalizationPreset("custom");
+      writeStringSetting(SETTINGS_KEYS.personalizationPreset, "custom");
+    }
   }
 
   function toggleAiPanelDefault() {
     const next = !aiPanelOpenByDefault;
     setAiPanelOpenByDefault(next);
     writeBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, next);
+
+    if (personalizationPreset !== "custom") {
+      setPersonalizationPreset("custom");
+      writeStringSetting(SETTINGS_KEYS.personalizationPreset, "custom");
+    }
   }
 
   function updateAiDefaultMode(mode: AiMode) {
@@ -184,6 +420,7 @@ export function AccessibilitySettings() {
       const next = { ...current, [key]: !current[key] };
       writeCustomPerformanceProfile(next);
       applyHardwareOptimizations();
+      pushRecentChange(`snips.perf.custom.${key}`);
       return next;
     });
   }
@@ -195,6 +432,8 @@ export function AccessibilitySettings() {
         : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
     }`;
   }
+
+  const showRecentInThisSection = activeGroup === "personalization" || !normalizedQuery;
 
   return (
     <>
@@ -216,14 +455,17 @@ export function AccessibilitySettings() {
             <div className="border-b border-border/70 px-5 py-4">
               <DialogTitle>settings</DialogTitle>
               <DialogDescription>
-                configure ai features and accessibility preferences.
+                configure ai features, personalization, and accessibility preferences.
               </DialogDescription>
             </div>
           </DialogHeader>
 
-          <div className="grid min-h-0 flex-1 grid-cols-[120px_minmax(0,1fr)]">
+          <div className="grid min-h-0 flex-1 grid-cols-[130px_minmax(0,1fr)]">
             <nav className="border-r border-border/70 bg-muted/20 p-2">
               <div className="space-y-1">
+                <button type="button" className={navButtonClass("personalization")} onClick={() => setActiveGroup("personalization")}>
+                  <span className="inline-flex items-center gap-1"><Palette className="size-3" /> personal</span>
+                </button>
                 <button type="button" className={navButtonClass("ai")} onClick={() => setActiveGroup("ai")}>
                   <span className="inline-flex items-center gap-1"><Sparkles className="size-3" /> ai</span>
                 </button>
@@ -243,111 +485,236 @@ export function AccessibilitySettings() {
             </nav>
 
             <div className="min-h-0 overflow-y-auto theme-scrollbar p-4">
+              <div className="mb-3 rounded-lg border border-border/70 bg-card px-3 py-2">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Search className="size-3.5" />
+                  search settings
+                </label>
+                <input
+                  value={settingsQuery}
+                  onChange={(event) => setSettingsQuery(event.target.value)}
+                  placeholder="search by keyword"
+                  className="mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+
+              {showRecentInThisSection && recentChanges.length > 0 && (
+                <section className="mb-3 rounded-lg border border-border/70 bg-card px-3 py-2">
+                  <p className="text-xs font-medium">recently changed</p>
+                  <div className="mt-1 space-y-1">
+                    {recentChanges.slice(0, 4).map((item) => (
+                      <p key={item.key} className="text-xs text-muted-foreground">{item.label}</p>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {activeGroup === "personalization" && (
+                <section className="space-y-2">
+                  {matchesQuery("preset", "personalization", "focused", "balanced", "expressive") && (
+                    <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
+                      <span className="text-sm font-medium">personalization preset</span>
+                      <select
+                        className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={personalizationPreset}
+                        onChange={(event) => applyPersonalizationPreset(event.target.value as PersonalizationPreset)}
+                      >
+                        {PERSONALIZATION_PRESETS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-muted-foreground">practical presets for look + workflow defaults.</p>
+                    </label>
+                  )}
+
+                  {matchesQuery("density", "spacing", "compact", "comfortable") && (
+                    <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
+                      <span className="text-sm font-medium">ui density</span>
+                      <select
+                        className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={uiDensity}
+                        onChange={(event) => updateUiDensity(event.target.value as UiDensity)}
+                      >
+                        <option value="comfortable">comfortable</option>
+                        <option value="compact">compact</option>
+                      </select>
+                    </label>
+                  )}
+
+                  {matchesQuery("animation", "motion", "speed") && (
+                    <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
+                      <span className="text-sm font-medium">animation level</span>
+                      <select
+                        className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={animationLevel}
+                        onChange={(event) => updateAnimationLevel(event.target.value as AnimationLevel)}
+                      >
+                        <option value="full">full</option>
+                        <option value="reduced">reduced</option>
+                        <option value="minimal">minimal</option>
+                      </select>
+                    </label>
+                  )}
+
+                  {matchesQuery("ai panel", "layout", "workflow", "default") && (
+                    <button
+                      type="button"
+                      onClick={toggleAiPanelDefault}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">open ai panel by default</p>
+                        <p className="text-xs text-muted-foreground">layout default on snippet detail page</p>
+                      </div>
+                      {aiPanelOpenByDefault ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("vim", "hints", "workflow", "shortcuts") && (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={toggleVimShortcuts}
+                        className="flex items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                      >
+                        <span className="text-xs">vim shortcuts</span>
+                        {vimShortcuts ? <Check className="size-3.5 text-foreground" /> : null}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleShowHints}
+                        className="flex items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                      >
+                        <span className="text-xs">show hints</span>
+                        {showHints ? <Check className="size-3.5 text-foreground" /> : null}
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {activeGroup === "ai" && (
                 <section className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={toggleAiSimilaritySearch}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">ai similarity search</p>
-                      <p className="text-xs text-muted-foreground">find related snippets by code intent (default off)</p>
-                    </div>
-                    {aiSimilaritySearch ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={toggleAiPanelDefault}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">open ai panel by default</p>
-                      <p className="text-xs text-muted-foreground">controls default state on snippet detail page</p>
-                    </div>
-                    {aiPanelOpenByDefault ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
-
-                  <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
-                    <span className="text-sm font-medium">default ai mode</span>
-                    <select
-                      className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      value={aiDefaultMode}
-                      onChange={(event) => updateAiDefaultMode(event.target.value as AiMode)}
+                  {matchesQuery("similarity", "ai", "related", "search") && (
+                    <button
+                      type="button"
+                      onClick={toggleAiSimilaritySearch}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
                     >
-                      {AI_MODE_OPTIONS.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </label>
+                      <div>
+                        <p className="text-sm font-medium">ai similarity search</p>
+                        <p className="text-xs text-muted-foreground">find related snippets by code intent (default off)</p>
+                      </div>
+                      {aiSimilaritySearch ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("ai panel", "default") && (
+                    <button
+                      type="button"
+                      onClick={toggleAiPanelDefault}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">open ai panel by default</p>
+                        <p className="text-xs text-muted-foreground">controls default state on snippet detail page</p>
+                      </div>
+                      {aiPanelOpenByDefault ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("mode", "default ai mode", "improve", "refactor", "debug", "explain") && (
+                    <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
+                      <span className="text-sm font-medium">default ai mode</span>
+                      <select
+                        className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={aiDefaultMode}
+                        onChange={(event) => updateAiDefaultMode(event.target.value as AiMode)}
+                      >
+                        {AI_MODE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </section>
               )}
 
               {activeGroup === "preferences" && (
                 <section className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={toggleCompactLayout}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">compact layout</p>
-                      <p className="text-xs text-muted-foreground">reduce spacing for denser information display</p>
-                    </div>
-                    {compactLayout ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={toggleShowHints}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">show productivity hints</p>
-                      <p className="text-xs text-muted-foreground">toggle keyboard and power-search hint labels</p>
-                    </div>
-                    {showHints ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={toggleWrapCodeLines}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">wrap long code lines</p>
-                      <p className="text-xs text-muted-foreground">avoid horizontal scroll in code blocks</p>
-                    </div>
-                    {wrapCodeLines ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={toggleVimShortcuts}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">vim-style keyboard shortcuts</p>
-                      <p className="text-xs text-muted-foreground">enable global vim keys and textarea vim mode</p>
-                    </div>
-                    {vimShortcuts ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
-
-                  <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
-                    <span className="text-sm font-medium">default code theme</span>
-                    <select
-                      className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      value={codeTheme}
-                      onChange={(event) => updateCodeTheme(event.target.value)}
+                  {matchesQuery("compact", "density", "layout") && (
+                    <button
+                      type="button"
+                      onClick={toggleCompactLayout}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
                     >
-                      {CODE_THEME_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
+                      <div>
+                        <p className="text-sm font-medium">compact layout</p>
+                        <p className="text-xs text-muted-foreground">reduce spacing for denser information display</p>
+                      </div>
+                      {compactLayout ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("hints", "productivity", "labels") && (
+                    <button
+                      type="button"
+                      onClick={toggleShowHints}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">show productivity hints</p>
+                        <p className="text-xs text-muted-foreground">toggle keyboard and power-search hint labels</p>
+                      </div>
+                      {showHints ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("wrap", "code", "line") && (
+                    <button
+                      type="button"
+                      onClick={toggleWrapCodeLines}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">wrap long code lines</p>
+                        <p className="text-xs text-muted-foreground">avoid horizontal scroll in code blocks</p>
+                      </div>
+                      {wrapCodeLines ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("vim", "shortcuts") && (
+                    <button
+                      type="button"
+                      onClick={toggleVimShortcuts}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">vim-style keyboard shortcuts</p>
+                        <p className="text-xs text-muted-foreground">enable global vim keys and textarea vim mode</p>
+                      </div>
+                      {vimShortcuts ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
+
+                  {matchesQuery("theme", "code", "appearance") && (
+                    <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
+                      <span className="text-sm font-medium">default code theme</span>
+                      <select
+                        className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={codeTheme}
+                        onChange={(event) => updateCodeTheme(event.target.value)}
+                      >
+                        {CODE_THEME_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </section>
               )}
+
               {activeGroup === "performance" && (
                 <section className="space-y-2">
                   <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
@@ -360,7 +727,12 @@ export function AccessibilitySettings() {
                   </div>
 
                   <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
-                    <span className="text-sm font-medium">performance mode</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">performance mode</span>
+                      <span className="rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
+                        recommended: {recommendedPerformanceMode}
+                      </span>
+                    </div>
                     <select
                       className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={hardwarePreference}
@@ -372,9 +744,9 @@ export function AccessibilitySettings() {
                       <option value="custom">custom profile</option>
                     </select>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {hardwarePreference === "auto" 
-                        ? "automatically optimizes based on your hardware" 
-                        : hardwarePreference === "low" 
+                      {hardwarePreference === "auto"
+                        ? "automatically optimizes based on your hardware"
+                        : hardwarePreference === "low"
                         ? "disables visual effects like blur, sheen, and cursor tracking"
                         : hardwarePreference === "custom"
                         ? "use your own hardware/performance profile"
@@ -391,7 +763,10 @@ export function AccessibilitySettings() {
                         onClick={() => toggleCustomProfileSetting("disableCursorTracking")}
                         className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
                       >
-                        <span>disable cursor tracking effects</span>
+                        <span className="inline-flex items-center gap-2">
+                          disable cursor tracking effects
+                          {perfRecommendations.disableCursorTracking ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">recommended</span> : null}
+                        </span>
                         {customProfile.disableCursorTracking ? <Check className="size-3.5" /> : null}
                       </button>
 
@@ -400,7 +775,10 @@ export function AccessibilitySettings() {
                         onClick={() => toggleCustomProfileSetting("disableBackdropFilter")}
                         className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
                       >
-                        <span>disable backdrop blur</span>
+                        <span className="inline-flex items-center gap-2">
+                          disable backdrop blur
+                          {perfRecommendations.disableBackdropFilter ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">recommended</span> : null}
+                        </span>
                         {customProfile.disableBackdropFilter ? <Check className="size-3.5" /> : null}
                       </button>
 
@@ -409,7 +787,10 @@ export function AccessibilitySettings() {
                         onClick={() => toggleCustomProfileSetting("disableShadows")}
                         className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
                       >
-                        <span>disable shadow effects</span>
+                        <span className="inline-flex items-center gap-2">
+                          disable shadow effects
+                          {perfRecommendations.disableShadows ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">recommended</span> : null}
+                        </span>
                         {customProfile.disableShadows ? <Check className="size-3.5" /> : null}
                       </button>
 
@@ -418,7 +799,10 @@ export function AccessibilitySettings() {
                         onClick={() => toggleCustomProfileSetting("disableSheenEffects")}
                         className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
                       >
-                        <span>disable sheen effects</span>
+                        <span className="inline-flex items-center gap-2">
+                          disable sheen effects
+                          {perfRecommendations.disableSheenEffects ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">recommended</span> : null}
+                        </span>
                         {customProfile.disableSheenEffects ? <Check className="size-3.5" /> : null}
                       </button>
 
@@ -427,7 +811,10 @@ export function AccessibilitySettings() {
                         onClick={() => toggleCustomProfileSetting("reduceAnimationDuration")}
                         className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
                       >
-                        <span>reduce animation durations</span>
+                        <span className="inline-flex items-center gap-2">
+                          reduce animation durations
+                          {perfRecommendations.reduceAnimationDuration ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">recommended</span> : null}
+                        </span>
                         {customProfile.reduceAnimationDuration ? <Check className="size-3.5" /> : null}
                       </button>
 
@@ -436,7 +823,10 @@ export function AccessibilitySettings() {
                         onClick={() => toggleCustomProfileSetting("throttleMouseEvents")}
                         className="flex w-full items-center justify-between rounded-md border border-border/70 px-2 py-1.5 text-left text-xs hover:bg-accent"
                       >
-                        <span>throttle pointer events</span>
+                        <span className="inline-flex items-center gap-2">
+                          throttle pointer events
+                          {perfRecommendations.throttleMouseEvents ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">recommended</span> : null}
+                        </span>
                         {customProfile.throttleMouseEvents ? <Check className="size-3.5" /> : null}
                       </button>
                     </div>
@@ -454,45 +844,53 @@ export function AccessibilitySettings() {
                   </div>
                 </section>
               )}
+
               {activeGroup === "accessibility" && (
                 <section className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleSetting("reducedMotion")}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">reduced ui motion</p>
-                      <p className="text-xs text-muted-foreground">reduce animations and transitions globally</p>
-                    </div>
-                    {settings.reducedMotion ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
+                  {matchesQuery("motion", "reduce", "animation") && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSetting("reducedMotion")}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">reduced ui motion</p>
+                        <p className="text-xs text-muted-foreground">reduce animations and transitions globally</p>
+                      </div>
+                      {settings.reducedMotion ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => toggleSetting("largerText")}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">larger text</p>
-                      <p className="text-xs text-muted-foreground">increase base text size for readability</p>
-                    </div>
-                    {settings.largerText ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
+                  {matchesQuery("text", "readability", "larger") && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSetting("largerText")}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">larger text</p>
+                        <p className="text-xs text-muted-foreground">increase base text size for readability</p>
+                      </div>
+                      {settings.largerText ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => toggleSetting("strongerFocus")}
-                    className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">stronger focus outlines</p>
-                      <p className="text-xs text-muted-foreground">make keyboard focus states more visible</p>
-                    </div>
-                    {settings.strongerFocus ? <Check className="size-4 text-foreground" /> : null}
-                  </button>
+                  {matchesQuery("focus", "keyboard", "outline") && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSetting("strongerFocus")}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-all duration-200 hover:bg-accent"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">stronger focus outlines</p>
+                        <p className="text-xs text-muted-foreground">make keyboard focus states more visible</p>
+                      </div>
+                      {settings.strongerFocus ? <Check className="size-4 text-foreground" /> : null}
+                    </button>
+                  )}
                 </section>
               )}
+
               {activeGroup === "credits" && (
                 <section className="space-y-2">
                   <div className="rounded-lg border border-border/70 bg-card px-3 py-2">

@@ -19,7 +19,7 @@ minimal, fast personal (and shared) snippet vault built with next.js, supabase, 
 - ai coding assistant sidebar on snippet detail pages (hidden in public view)
 - multi-provider ai support with mode-aware prompts (`improve`, `refactor`, `debug`, `explain`)
 - optional ai similarity search (default off), ai auto-tagging, and ai docs generation
-- unified settings with a11y controls
+- unified settings with personalization, search, recent changes, and a11y controls
 - built-in execution playground for `python`, `cpp`, `txt`, and `md`
 - snippet benchmarks persisted on save (`chars`, `bytes`, `bits`, `lines`)
 - last edited + engagement metadata (`created_at`, `updated_at`, `view_count`, `copy_count`)
@@ -162,7 +162,11 @@ npm run dev
 
 **settings**
 - open settings from the header action
-- switch between `ai`, `prefs`, and `a11y` in the mini vertical nav
+- switch between `personal`, `ai`, `prefs`, `perf`, `a11y`, and `credits` in the mini vertical nav
+- personalization includes practical presets (`balanced`, `focused`, `expressive`, `custom`), ui density, and animation level
+- settings panel supports keyword search and a recently changed list
+- performance tab supports `auto`, `low`, `normal`, and `custom` hardware profiles
+- custom hardware profile lets users choose which optimizations to apply
 - preferences include compact layout, hint visibility, code wrapping, and default code theme
 
 **themes**

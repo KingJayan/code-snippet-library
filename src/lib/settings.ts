@@ -9,6 +9,9 @@ export const SETTINGS_KEYS = {
   showHints: "snips.pref.show-hints",
   wrapCodeLines: "snips.pref.wrap-code-lines",
   vimShortcuts: "snips.pref.vim-shortcuts",
+  personalizationPreset: "snips.pref.personalization-preset",
+  uiDensity: "snips.pref.ui-density",
+  animationLevel: "snips.pref.animation-level",
   codeTheme: "code-theme",
   lowHardwareMode: "snips.perf.low-hardware",
 } as const;
