@@ -22,6 +22,7 @@ import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { AiChatSidebar } from "@/components/ai-chat-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CodeBlock } from "@/components/code-block";
 import { WorkspaceSideNav } from "@/components/workspace-side-nav";
 import { SnippetDialog } from "@/components/snippet-dialog";
@@ -577,62 +578,126 @@ export default function SnippetDetailPage() {
               <option value="markdown">markdown block</option>
               <option value="line-numbers">with line numbers</option>
             </select>
-            <Button type="button" variant="outline" size="sm" onClick={() => void copyCode()}>
-              <Copy className="size-4" />
-              {copyState === "done"
-                ? "copied"
-                : copyState === "failed"
-                  ? "failed"
-                  : "copy"}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => void handleShare()}>
-              <Share2 className="size-4" />
-              {shareState === "done"
-                ? "copied"
-                : shareState === "failed"
-                  ? "failed"
-                  : "share"}
-            </Button>
-            <Button
-              type="button"
-              variant={snippet.public ? "default" : "outline"}
-              size="sm"
-              onClick={() => void handleTogglePublic()}
-            >
-              {snippet.public ? <Globe className="size-4" /> : <Lock className="size-4" />}
-              {snippet.public ? "public" : "private"}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={viewRaw}>
-              <Eye className="size-4" />
-              view raw
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={downloadSnippet}>
-              <Download className="size-4" />
-              download
-            </Button>
-            <Button
-              type="button"
-              variant={snippet.pinned ? "default" : "outline"}
-              size="sm"
-              onClick={() => void handleTogglePin()}
-            >
-              <Pin className={`size-4 ${snippet.pinned ? "fill-current" : ""}`} />
-              {snippet.pinned ? "pinned" : "pin"}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" />
-              edit
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => void handleDelete()}
-              disabled={deleting}
-            >
-              {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              delete
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => void copyCode()}
+                    aria-label="copy"
+                  >
+                    <Copy className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>
+                  {copyState === "done" ? "copied" : copyState === "failed" ? "failed" : "copy"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => void handleShare()}
+                    aria-label="share"
+                  >
+                    <Share2 className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>
+                  {shareState === "done" ? "copied" : shareState === "failed" ? "failed" : "share"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant={snippet.public ? "default" : "outline"}
+                    size="icon-sm"
+                    onClick={() => void handleTogglePublic()}
+                    aria-label={snippet.public ? "public" : "private"}
+                  >
+                    {snippet.public ? <Globe className="size-4" /> : <Lock className="size-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>{snippet.public ? "public" : "private"}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="button" variant="outline" size="icon-sm" onClick={viewRaw} aria-label="view raw">
+                    <Eye className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>view raw</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={downloadSnippet}
+                    aria-label="download"
+                  >
+                    <Download className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>download</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant={snippet.pinned ? "default" : "outline"}
+                    size="icon-sm"
+                    onClick={() => void handleTogglePin()}
+                    aria-label={snippet.pinned ? "pinned" : "pin"}
+                  >
+                    <Pin className={`size-4 ${snippet.pinned ? "fill-current" : ""}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>{snippet.pinned ? "pinned" : "pin"}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setEditOpen(true)}
+                    aria-label="edit"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>edit</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon-sm"
+                    onClick={() => void handleDelete()}
+                    disabled={deleting}
+                    aria-label="delete"
+                  >
+                    {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>delete</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </section>
