@@ -5,6 +5,7 @@ import { Copy, Loader2, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LANGUAGES } from "@/lib/constants";
 import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
 const HIGHLIGHT_CACHE = new Map<string, string>();
 const MAX_HIGHLIGHT_CACHE_ENTRIES = 120;
@@ -66,9 +67,10 @@ function cacheKeyFor(code: string, language: string, theme: string) {
 type CodeBlockProps = {
 	code: string;
 	language: string;
+	className?: string;
 };
 
-export function CodeBlock({ code, language }: CodeBlockProps) {
+export function CodeBlock({ code, language, className }: CodeBlockProps) {
 	const [html, setHtml] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
@@ -194,7 +196,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 	}
 
 	return (
-		<section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xs vfx-surface vfx-sheen vfx-edge-light vfx-float-shadow">
+		<section className={cn("flex min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xs vfx-surface vfx-sheen vfx-edge-light vfx-float-shadow", className)}>
 			<div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
 				<span className="font-mono text-xs text-zinc-300">{language}</span>
 				<div className="flex items-center gap-1">
@@ -248,12 +250,14 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 			)}
 
 			{html ? (
-				<div
-					className={`shiki-wrap text-sm ${wrapLines ? "wrap-lines overflow-x-hidden" : "overflow-x-auto"}`}
-					dangerouslySetInnerHTML={{ __html: html }}
-				/>
+				<div className={wrapLines ? "min-h-0 flex-1 overflow-y-auto overflow-x-hidden" : "min-h-0 flex-1 overflow-auto"}>
+					<div
+						className={`shiki-wrap text-sm ${wrapLines ? "wrap-lines" : ""}`}
+						dangerouslySetInnerHTML={{ __html: html }}
+					/>
+				</div>
 			) : (
-				<div className="space-y-3 p-4">
+				<div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
 					{!error && (
 						<div className="flex items-center gap-2 text-xs text-zinc-300">
 							<Loader2 className="size-3 animate-spin" />

@@ -547,7 +547,7 @@ export default function SnippetDetailPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-8">
       <InlineToast message={toastMessage} tone={toastTone} />
 
       <WorkspaceSideNav 
@@ -749,7 +749,7 @@ export default function SnippetDetailPage() {
         )}
       </header>
 
-      <section className={renderAiChat ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]" : "space-y-3"}>
+      <section className={renderAiChat ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]" : "space-y-3"}>
         <div className="space-y-3">
           {aiChatMinimized && (
             <div className="flex justify-end animate-subtle-fade-up">
@@ -768,7 +768,6 @@ export default function SnippetDetailPage() {
               </Button>
             </div>
           )}
-          <CodeBlock code={snippet.code} language={snippet.language} />
           
           <section className="rounded-2xl border border-border/70 bg-card/70 p-3 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
             <div className="flex items-center justify-between gap-2">
@@ -786,6 +785,12 @@ export default function SnippetDetailPage() {
               test and run this code in an isolated environment
             </p>
           </section>
+
+          <CodeBlock
+            code={snippet.code}
+            language={snippet.language}
+            className="h-[62vh] min-h-[360px] max-h-[780px]"
+          />
 
           {similarityEnabled && (
             <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
@@ -832,10 +837,10 @@ export default function SnippetDetailPage() {
 
         {renderAiChat && (
           <div
-            className={`overflow-hidden transition-all duration-300 ease-out ${
+            className={`h-[62vh] min-h-[520px] max-h-[780px] overflow-hidden transition-all duration-300 ease-out xl:sticky xl:top-24 ${
               aiChatMinimized
                 ? "pointer-events-none max-h-0 translate-y-2 opacity-0"
-                : "max-h-[1400px] translate-y-0 opacity-100"
+                : "translate-y-0 opacity-100"
             }`}
           >
             <AiChatSidebar
