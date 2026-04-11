@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility, Zap } from "lucide-react";
+import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility, Zap, Heart, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -43,7 +43,7 @@ const CODE_THEME_OPTIONS = [
 const AI_MODE_OPTIONS = ["improve", "refactor", "debug", "explain"] as const;
 
 type AiMode = (typeof AI_MODE_OPTIONS)[number];
-type SettingsGroup = "ai" | "preferences" | "accessibility" | "performance";
+type SettingsGroup = "ai" | "preferences" | "accessibility" | "performance" | "credits";
 
 function readInitialA11ySettings(): A11ySettings {
   return {
@@ -223,6 +223,9 @@ export function AccessibilitySettings() {
                 </button>
                 <button type="button" className={navButtonClass("accessibility")} onClick={() => setActiveGroup("accessibility")}>
                   <span className="inline-flex items-center gap-1"><Accessibility className="size-3" /> a11y</span>
+                </button>
+                <button type="button" className={navButtonClass("credits")} onClick={() => setActiveGroup("credits")}>
+                  <span className="inline-flex items-center gap-1"><Heart className="size-3" /> credits</span>
                 </button>
               </div>
             </nav>
@@ -413,6 +416,26 @@ export function AccessibilitySettings() {
                     </div>
                     {settings.strongerFocus ? <Check className="size-4 text-foreground" /> : null}
                   </button>
+                </section>
+              )}
+              {activeGroup === "credits" && (
+                <section className="space-y-2">
+                  <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+                    <p className="text-sm font-medium">made with</p>
+                    <p className="text-xs text-muted-foreground mt-1">built by jayan and open source contributors.</p>
+                  </div>
+                  <a
+                    href="https://github.com/KingJayan/code-snippet-library"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2 transition-all duration-200 hover:bg-accent"
+                  >
+                    <Github className="size-4" />
+                    <div>
+                      <p className="text-sm font-medium">github repository</p>
+                      <p className="text-xs text-muted-foreground">suggestions? fill out an issue or create a pr</p>
+                    </div>
+                  </a>
                 </section>
               )}
             </div>
