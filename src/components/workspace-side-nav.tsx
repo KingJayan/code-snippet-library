@@ -17,6 +17,8 @@ type WorkspaceSideNavProps = {
   workspaces?: Workspace[];
   activeWorkspaceId?: string | null;
   onSelectWorkspace?: (workspaceId: string) => void;
+  onSnippetDropToWorkspace?: (snippetId: string, workspaceId: string) => void;
+  draggingSnippetId?: string | null;
   canSelect?: boolean;
   actions?: WorkspaceAction[];
   workspacePinnedTitles?: Record<string, string[]>;
@@ -34,6 +36,8 @@ export function WorkspaceSideNav({
   workspaces = [],
   activeWorkspaceId = null,
   onSelectWorkspace,
+  onSnippetDropToWorkspace,
+  draggingSnippetId = null,
   canSelect = false,
   actions = [],
   workspacePinnedTitles = {},
@@ -49,6 +53,7 @@ export function WorkspaceSideNav({
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [desktopPanelSize, setDesktopPanelSize] = useState<DesktopPanelSize>("full");
   const [workspacePinsOpen, setWorkspacePinsOpen] = useState<Record<string, boolean>>({});
+  const [dragOverWorkspaceId, setDragOverWorkspaceId] = useState<string | null>(null);
   const hasActions = actions.length > 0;
   const mobileIconButtonClass =
     "grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-background/45 text-foreground/75 transition-all duration-200 ease-out hover:bg-accent/55 hover:text-foreground active:scale-95";
@@ -169,10 +174,35 @@ export function WorkspaceSideNav({
                   <button
                     type="button"
                     onClick={() => onSelectWorkspace?.(workspace.id)}
+                    onDragOver={(event) => {
+                      if (!onSnippetDropToWorkspace || !draggingSnippetId) return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      if (dragOverWorkspaceId !== workspace.id) {
+                        setDragOverWorkspaceId(workspace.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverWorkspaceId === workspace.id) {
+                        setDragOverWorkspaceId(null);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      if (!onSnippetDropToWorkspace) return;
+                      event.preventDefault();
+                      const droppedSnippetId =
+                        event.dataTransfer.getData("text/snips-snippet-id") ||
+                        event.dataTransfer.getData("text/plain");
+                      setDragOverWorkspaceId(null);
+                      if (!droppedSnippetId) return;
+                      onSnippetDropToWorkspace(droppedSnippetId, workspace.id);
+                    }}
                     disabled={!canSelect}
                     className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-200 ease-out active:scale-[0.99] ${
                       active
                         ? "bg-accent/65 text-foreground"
+                        : dragOverWorkspaceId === workspace.id
+                        ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
                         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                     }`}
                     title={workspace.name}

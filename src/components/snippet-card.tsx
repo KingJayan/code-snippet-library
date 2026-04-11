@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type DragEvent } from "react";
 import Link from "next/link";
 import { Clock, Code2, ArrowUpRight, Pin, Globe, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ interface SnippetCardProps {
   snippet: SnippetSummaryWithTags;
   onTagClick?: (tagName: string) => void;
   onTogglePin?: (id: string, pinned: boolean) => void;
+  onDragStart?: (snippetId: string) => void;
+  onDragEnd?: () => void;
   detailBasePath?: "/snippets" | "/public";
   selected?: boolean;
 }
@@ -21,6 +23,8 @@ function SnippetCardRaw({
   snippet,
   onTagClick,
   onTogglePin,
+  onDragStart,
+  onDragEnd,
   detailBasePath = "/snippets",
   selected = false,
 }: SnippetCardProps) {
@@ -35,9 +39,23 @@ function SnippetCardRaw({
     onTogglePin?.(snippet.id, !snippet.pinned);
   }
 
+  function handleDragStart(event: DragEvent<HTMLAnchorElement>) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/snips-snippet-id", snippet.id);
+    event.dataTransfer.setData("text/plain", snippet.id);
+    onDragStart?.(snippet.id);
+  }
+
+  function handleDragEnd() {
+    onDragEnd?.();
+  }
+
   return (
     <Link
       href={`${detailBasePath}/${snippet.id}`}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       className="snippet-card-shell group relative flex flex-col gap-2 sm:gap-3 rounded-lg border border-border/60
                  bg-card p-3 sm:p-4 transition-all duration-200 ease-out motion-safe-enter vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow
                  hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md

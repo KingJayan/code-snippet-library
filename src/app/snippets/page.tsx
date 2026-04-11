@@ -37,6 +37,7 @@ import {
   deleteWorkspace,
   listSnippets,
   listWorkspaces,
+  moveSnippetToWorkspace,
   renameWorkspace,
   togglePinSnippet,
   toggleWorkspacePublic,
@@ -181,6 +182,7 @@ export default function SnippetsPage() {
   const [showHints, setShowHints] = useState(true);
   const [vimShortcutsEnabled, setVimShortcutsEnabled] = useState(false);
   const [selectedSnippetIndex, setSelectedSnippetIndex] = useState(0);
+  const [draggingSnippetId, setDraggingSnippetId] = useState<string | null>(null);
 
   const listParentRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -759,6 +761,52 @@ export default function SnippetsPage() {
     }
   }
 
+  async function handleMoveSnippet(snippetId: string, targetWorkspaceId: string) {
+    if (!activeWorkspaceId) {
+      setDraggingSnippetId(null);
+      return;
+    }
+
+    if (targetWorkspaceId === activeWorkspaceId) {
+      setDraggingSnippetId(null);
+      return;
+    }
+
+    const snippet = snippets.find((current) => current.id === snippetId);
+    if (!snippet) {
+      setDraggingSnippetId(null);
+      return;
+    }
+
+    showToast("moving snippet...", "info");
+    const { error: serviceError } = await moveSnippetToWorkspace(snippetId, targetWorkspaceId);
+    setDraggingSnippetId(null);
+
+    if (serviceError) {
+      showToast(serviceError, "error");
+      return;
+    }
+
+    const sourceNext = snippets.filter((current) => current.id !== snippetId);
+    setSnippets(sourceNext);
+    writeCachedSnippets(activeWorkspaceId, sourceNext);
+
+    const movedSnippet: SnippetSummaryWithTags = {
+      ...snippet,
+      workspace_id: targetWorkspaceId,
+      updated_at: new Date().toISOString(),
+    };
+
+    const targetCached = readCachedSnippets(targetWorkspaceId).filter(
+      (current) => current.id !== snippetId
+    );
+    writeCachedSnippets(targetWorkspaceId, [movedSnippet, ...targetCached]);
+
+    const targetWorkspaceName =
+      workspaces.find((workspace) => workspace.id === targetWorkspaceId)?.name ?? "workspace";
+    showToast(`moved to ${targetWorkspaceName}`, "success");
+  }
+
   async function handleSendMagicLink() {
     if (!email.trim()) {
       setAuthError("email is required");
@@ -840,6 +888,10 @@ export default function SnippetsPage() {
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         onSelectWorkspace={(workspaceId) => setActiveWorkspaceId(workspaceId)}
+        onSnippetDropToWorkspace={(snippetId, workspaceId) => {
+          void handleMoveSnippet(snippetId, workspaceId);
+        }}
+        draggingSnippetId={draggingSnippetId}
         canSelect={isAuthenticated}
         actions={workspaceUtilities}
         workspacePinnedTitles={workspacePinnedTitles}
@@ -1005,6 +1057,8 @@ export default function SnippetsPage() {
                     selected={vimShortcutsEnabled && row.index === selectedSnippetIndex}
                     onTagClick={(tag) => setActiveTag(tag)}
                     onTogglePin={handleTogglePin}
+                    onDragStart={(id) => setDraggingSnippetId(id)}
+                    onDragEnd={() => setDraggingSnippetId(null)}
                   />
                 </div>
               );

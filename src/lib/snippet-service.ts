@@ -607,6 +607,30 @@ export async function togglePinSnippet(
   }
 }
 
+export async function moveSnippetToWorkspace(
+  id: string,
+  workspaceId: string
+): Promise<ServiceResult<boolean>> {
+  try {
+    const client = requireClient();
+    const userId = await requireUserId(client);
+
+    const { error } = await client
+      .from("snippets")
+      .update({ workspace_id: workspaceId })
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error) ?? "failed to move snippet");
+    }
+
+    return { data: true, error: null };
+  } catch (error) {
+    return withError<boolean>(error);
+  }
+}
+
 export async function togglePublicSnippet(
   id: string,
   isPublic: boolean
