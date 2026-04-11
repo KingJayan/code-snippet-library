@@ -1,47 +1,23 @@
-# Contributing
+# contributions
 
-Thanks for helping improve this project.
+thanks for helping build this project
 
-## Development setup
+## credits
 
-1. Install dependencies:
+- created and maintained by jayan
+- no open source contributers yet
 
-```bash
-npm install
-```
+## ways to contribute
 
-2. Create `.env.local` with required vars:
+- report bugs, ideas, or ux feedback by opening [an issue](https://github.com/KingJayan/code-snippet-library/issues/new/choose)
+- submit fixes and features by [creating a pr](https://github.com/KingJayan/code-snippet-library/compare)
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+## quick start
 
-3. Start dev server:
-
-```bash
-npm run dev
-```
-
-## Branching and commits
-
-- Create a feature/fix branch from `main`.
-- Keep commits focused and small.
-- Use clear commit messages, e.g.:
-  - `feat: add workspace side nav`
-  - `fix: prevent abort toast on route change`
-
-## Code style
-
-- Use TypeScript.
-- Follow existing component and naming patterns.
-- Prefer minimal, targeted changes over large refactors.
-- Reuse existing UI primitives and theme tokens.
-
-## Before opening a PR
-
-Run:
+1. fork the repo
+2. create a branch from main
+3. make focused changes
+4. run checks:
 
 ```bash
 npm run lint
@@ -49,25 +25,54 @@ npx tsc --noEmit
 npm run build
 ```
 
-If you changed behavior, include a short note in PR description with:
+5. open your pull request with a short test note
 
-- What changed
-- Why it changed
-- How you tested it
+## notes about pr format
 
-## PR checklist
+- keep the pr scoped to one issue or one feature
+- use a clear title like `feat: add inline edit mode` or `fix: improve credits links`
+- include a short summary with:
+	- what changed
+	- why it changed
+	- how you tested it
+- include screenshots or a short recording for visible ui changes
+- link the related issue when possible
+- avoid mixing unrelated refactors with the main change
 
-- [ ] Change is scoped to the issue/feature
-- [ ] No unrelated refactors
-- [ ] Typecheck/build pass locally
-- [ ] UI works on desktop and mobile (if applicable)
-- [ ] Screenshots/GIF for visible UI changes
+## notes about code
 
-## Reporting issues
+- use typescript and match existing patterns in the codebase
+- keep changes minimal, concise, and maintainable
+- prefer reuse of existing ui primitives/components before adding new ones
+- keep comments minimal and only where logic is not obvious
+- avoid one-letter variable names unless they are standard loop counters
+- keep user-facing copy readable and consistent
+- test on desktop and mobile if ui behavior changed
 
-Please include:
+## before opening a pr
 
-- Steps to reproduce
-- Expected vs actual behavior
-- Browser/OS
-- Console errors and screenshots
+run:
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+## pr checklist
+
+- [ ] change is scoped to the issue/feature
+- [ ] no unrelated refactors
+- [ ] typecheck/build pass locally
+- [ ] ui works on desktop and mobile (if applicable)
+- [ ] screenshots/gif included for visible ui changes
+
+## reporting issues
+
+please include:
+
+- steps to reproduce
+- expected vs actual behavior
+- browser/os, hardware(if applicable)
+- console errors and screenshots
+

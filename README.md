@@ -192,6 +192,10 @@ npx tsc --noEmit
 npm run build
 ```
 
+## contributing
+
+- read the contribution process: [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## deploy
 
 - includes `vercel.json` and `.vercelignore` for vercel deployment

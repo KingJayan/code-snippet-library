@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility, Zap, Heart, Github } from "lucide-react";
+import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility, Zap, Link, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -225,7 +225,7 @@ export function AccessibilitySettings() {
                   <span className="inline-flex items-center gap-1"><Accessibility className="size-3" /> a11y</span>
                 </button>
                 <button type="button" className={navButtonClass("credits")} onClick={() => setActiveGroup("credits")}>
-                  <span className="inline-flex items-center gap-1"><Heart className="size-3" /> credits</span>
+                  <span className="inline-flex items-center gap-1"><Link className="size-3" /> credits</span>
                 </button>
               </div>
             </nav>
@@ -421,21 +421,18 @@ export function AccessibilitySettings() {
               {activeGroup === "credits" && (
                 <section className="space-y-2">
                   <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-                    <p className="text-sm font-medium">made with</p>
-                    <p className="text-xs text-muted-foreground mt-1">built by jayan and open source contributors.</p>
+                    <p className="text-sm font-medium">made with :)</p>
+                    <p className="text-xs text-muted-foreground mt-1">built by jayan.</p>
                   </div>
-                  <a
-                    href="https://github.com/KingJayan/code-snippet-library"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2 transition-all duration-200 hover:bg-accent"
-                  >
-                    <Github className="size-4" />
-                    <div>
+                  <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Github className="size-4" />
                       <p className="text-sm font-medium">github repository</p>
-                      <p className="text-xs text-muted-foreground">suggestions? fill out an issue or create a pr</p>
                     </div>
-                  </a>
+                    <p className="mt-1 text-xs text-foreground/90">
+                      suggestions? fill out <a href="https://github.com/KingJayan/code-snippet-library/issues/new/choose" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">an issue</a> or <a href="https://github.com/KingJayan/code-snippet-library/compare" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">create a pr</a>.
+                    </p>
+                  </div>
                 </section>
               )}
             </div>
