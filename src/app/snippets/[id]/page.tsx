@@ -16,13 +16,14 @@ import {
   Globe,
   Lock,
   PanelRightOpen,
+  Play,
 } from "lucide-react";
 import { InlineToast, type ToastTone } from "@/components/inline-toast";
 import { AiChatSidebar } from "@/components/ai-chat-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/code-block";
-import { SnippetPlayground } from "@/components/snippet-playground";
+import { WorkspaceSideNav } from "@/components/workspace-side-nav";
 import { SnippetDialog } from "@/components/snippet-dialog";
 import {
   deleteSnippet,
@@ -548,6 +549,14 @@ export default function SnippetDetailPage() {
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-8">
       <InlineToast message={toastMessage} tone={toastTone} />
 
+      <WorkspaceSideNav 
+        compactSnipsOnly 
+        snippetsHref="/snippets" 
+        showPublicLink={false} 
+        showPlaygroundLink 
+        playgroundSnippetId={snippet.id}
+      />
+
       <section className="sticky top-3 z-20 rounded-xl border border-border/70 bg-card/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/70 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link href="/snippets" className="text-sm text-muted-foreground hover:text-foreground">
@@ -695,11 +704,23 @@ export default function SnippetDetailPage() {
             </div>
           )}
           <CodeBlock code={snippet.code} language={snippet.language} />
-          <SnippetPlayground
-            initialCode={snippet.code}
-            initialLanguage={snippet.language}
-            onExecutionStats={(stats) => setExecutionStats(stats)}
-          />
+          
+          <section className="rounded-2xl border border-border/70 bg-card/70 p-3 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-tight">playground</h2>
+              <Link href={`/playground/${snippet.id}`} passHref legacyBehavior>
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <a>
+                    <Play className="size-4" />
+                    open playground
+                  </a>
+                </Button>
+              </Link>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              test and run this code in an isolated environment
+            </p>
+          </section>
 
           {similarityEnabled && (
             <section className="space-y-2 rounded-2xl border border-border/70 bg-card/60 p-3 animate-subtle-fade-up vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">

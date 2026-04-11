@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Clock, Code2, ArrowUpRight, Pin, Globe } from "lucide-react";
+import { Clock, Code2, ArrowUpRight, Pin, Globe, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LANGUAGES } from "@/lib/constants";
@@ -63,6 +63,15 @@ function SnippetCardRaw({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          <Link
+            href={`/playground/${snippet.id}`}
+            className="vfx-icon-chip rounded p-1 transition-colors hover:bg-accent text-muted-foreground hover:text-foreground"
+            onClick={(e) => e.stopPropagation()}
+            title="open in playground"
+          >
+            <Play className="size-3.5" />
+          </Link>
+
           <button
             onClick={handlePinClick}
             className={`vfx-icon-chip rounded p-1 transition-colors hover:bg-accent ${

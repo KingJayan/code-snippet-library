@@ -10,6 +10,7 @@ export const SETTINGS_KEYS = {
   wrapCodeLines: "snips.pref.wrap-code-lines",
   vimShortcuts: "snips.pref.vim-shortcuts",
   codeTheme: "code-theme",
+  lowHardwareMode: "snips.perf.low-hardware",
 } as const;
 
 export type SettingKey = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS];

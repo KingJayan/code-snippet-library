@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility } from "lucide-react";
+import { Check, Settings2, Sparkles, SlidersHorizontal, Accessibility, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +18,12 @@ import {
   writeBoolSetting,
   writeStringSetting,
 } from "@/lib/settings";
+import {
+  detectHardwareProfile,
+  readHardwarePreference,
+  writeHardwarePreference,
+  applyHardwareOptimizations,
+} from "@/lib/hardware-detection";
 
 type A11ySettings = {
   reducedMotion: boolean;
@@ -37,7 +43,7 @@ const CODE_THEME_OPTIONS = [
 const AI_MODE_OPTIONS = ["improve", "refactor", "debug", "explain"] as const;
 
 type AiMode = (typeof AI_MODE_OPTIONS)[number];
-type SettingsGroup = "ai" | "preferences" | "accessibility";
+type SettingsGroup = "ai" | "preferences" | "accessibility" | "performance";
 
 function readInitialA11ySettings(): A11ySettings {
   return {
@@ -63,6 +69,11 @@ export function AccessibilitySettings() {
   const [aiPanelOpenByDefault, setAiPanelOpenByDefault] = useState(() => readBoolSetting(SETTINGS_KEYS.aiPanelOpenByDefault, true));
   const [aiDefaultMode, setAiDefaultMode] = useState<AiMode>(() => readInitialAiMode());
   const [codeTheme, setCodeTheme] = useState(() => readStringSetting(SETTINGS_KEYS.codeTheme, "github-dark"));
+  const [hardwarePreference, setHardwarePreference] = useState<"auto" | "low" | "normal">(() => {
+    const pref = readHardwarePreference();
+    return pref === null ? "auto" : pref ? "low" : "normal";
+  });
+  const [hardwareProfile, setHardwareProfile] = useState(() => detectHardwareProfile());
   const [activeGroup, setActiveGroup] = useState<SettingsGroup>("ai");
 
   useEffect(() => {
@@ -71,6 +82,17 @@ export function AccessibilitySettings() {
     applyRootClass("a11y-strong-focus", settings.strongerFocus);
     applyRootClass("pref-compact", compactLayout);
   }, [compactLayout, settings.largerText, settings.reducedMotion, settings.strongerFocus]);
+
+  useEffect(() => {
+    const handleHardwarePreferenceChange = () => {
+      setHardwareProfile(detectHardwareProfile());
+    };
+
+    window.addEventListener("snips-hardware-preference-changed", handleHardwarePreferenceChange);
+    return () => {
+      window.removeEventListener("snips-hardware-preference-changed", handleHardwarePreferenceChange);
+    };
+  }, []);
 
   const enabledCount = useMemo(() => {
     const a11yCount = Object.values(settings).filter(Boolean).length;
@@ -148,6 +170,12 @@ export function AccessibilitySettings() {
     writeStringSetting(SETTINGS_KEYS.codeTheme, theme);
   }
 
+  function updateHardwarePreference(pref: "auto" | "low" | "normal") {
+    setHardwarePreference(pref);
+    writeHardwarePreference(pref);
+    applyHardwareOptimizations();
+  }
+
   function navButtonClass(group: SettingsGroup) {
     return `w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
       activeGroup === group
@@ -189,6 +217,9 @@ export function AccessibilitySettings() {
                 </button>
                 <button type="button" className={navButtonClass("preferences")} onClick={() => setActiveGroup("preferences")}>
                   <span className="inline-flex items-center gap-1"><SlidersHorizontal className="size-3" /> prefs</span>
+                </button>
+                <button type="button" className={navButtonClass("performance")} onClick={() => setActiveGroup("performance")}>
+                  <span className="inline-flex items-center gap-1"><Zap className="size-3" /> perf</span>
                 </button>
                 <button type="button" className={navButtonClass("accessibility")} onClick={() => setActiveGroup("accessibility")}>
                   <span className="inline-flex items-center gap-1"><Accessibility className="size-3" /> a11y</span>
@@ -302,7 +333,49 @@ export function AccessibilitySettings() {
                   </label>
                 </section>
               )}
+              {activeGroup === "performance" && (
+                <section className="space-y-2">
+                  <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+                    <p className="text-xs font-medium mb-2">hardware profile detected</p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p><span className="text-foreground">cores:</span> {hardwareProfile.cores || "unknown"}</p>
+                      <p><span className="text-foreground">ram:</span> {hardwareProfile.ram ? `${hardwareProfile.ram}GB` : "unknown"}</p>
+                      <p><span className="text-foreground">status:</span> {hardwareProfile.isLowEnd ? "low-end device" : "high-performance device"}</p>
+                    </div>
+                  </div>
 
+                  <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
+                    <span className="text-sm font-medium">performance mode</span>
+                    <select
+                      className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={hardwarePreference}
+                      onChange={(event) => updateHardwarePreference(event.target.value as "auto" | "low" | "normal")}
+                    >
+                      <option value="auto">auto-detect (recommended)</option>
+                      <option value="low">force low-end optimizations</option>
+                      <option value="normal">force normal performance</option>
+                    </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {hardwarePreference === "auto" 
+                        ? "automatically optimizes based on your hardware" 
+                        : hardwarePreference === "low" 
+                        ? "disables visual effects like blur, sheen, and cursor tracking"
+                        : "enables all visual effects"}
+                    </p>
+                  </label>
+
+                  <div className="rounded-lg border border-border/70 bg-card px-3 py-2 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground">low-end optimizations disable:</p>
+                    <ul className="list-inside space-y-0.5 ml-1">
+                      <li>• backdrop blur effects</li>
+                      <li>• cursor tracking effects</li>
+                      <li>• sheen/shine animations</li>
+                      <li>• shadow effects</li>
+                      <li>• animation durations halved</li>
+                    </ul>
+                  </div>
+                </section>
+              )}
               {activeGroup === "accessibility" && (
                 <section className="space-y-2">
                   <button

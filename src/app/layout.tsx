@@ -63,6 +63,30 @@ export default function RootLayout({
   if (localStorage.getItem('snips.pref.compact-layout') === '1') {
     root.classList.add('pref-compact');
   }
+
+  (function(){
+    var userPref = null;
+    try { 
+      var stored = localStorage.getItem('snips.perf.low-hardware');
+      if (stored === 'auto') userPref = null;
+      if (stored === 'low') userPref = true;
+      if (stored === 'normal') userPref = false;
+    } catch (e) {}
+
+    // Auto-detect low-end hardware
+    var isLowEnd = userPref !== false && (userPref === true || 
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+      (navigator.deviceMemory && navigator.deviceMemory <= 4)
+    );
+
+    if (isLowEnd) {
+      root.classList.add('low-hw-no-cursor-tracking');
+      root.classList.add('low-hw-no-backdrop-filter');
+      root.classList.add('low-hw-no-shadows');
+      root.classList.add('low-hw-no-sheen');
+      root.classList.add('low-hw-reduce-animations');
+    }
+  })();
 })();`,
           }}
         />

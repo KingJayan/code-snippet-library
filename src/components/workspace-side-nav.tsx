@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Folder, FolderOpen, Globe, Home } from "lucide-react";
+import { Folder, FolderOpen, Globe, Home, Play } from "lucide-react";
 import { useNavigate } from "@/lib/use-navigate";
 import type { Workspace } from "@/lib/types";
 
@@ -22,6 +22,8 @@ type WorkspaceSideNavProps = {
   workspacePinnedTitles?: Record<string, string[]>;
   showPublicLink?: boolean;
   showSnippetsLink?: boolean;
+  showPlaygroundLink?: boolean;
+  playgroundSnippetId?: string | null;
   compactSnipsOnly?: boolean;
   snippetsHref?: string;
 };
@@ -37,6 +39,8 @@ export function WorkspaceSideNav({
   workspacePinnedTitles = {},
   showPublicLink = true,
   showSnippetsLink = false,
+  showPlaygroundLink = false,
+  playgroundSnippetId = null,
   compactSnipsOnly = false,
   snippetsHref = "/snippets",
 }: WorkspaceSideNavProps) {
@@ -77,11 +81,22 @@ export function WorkspaceSideNav({
             >
               <Home className="size-4" />
             </button>
+            {showPlaygroundLink && playgroundSnippetId && (
+              <button
+                type="button"
+                onClick={() => goto(`/playground/${playgroundSnippetId}`)}
+                className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/55 hover:text-foreground animate-subtle-pop-in vfx-icon-chip mt-2"
+                title="open playground"
+                aria-label="open playground"
+              >
+                <Play className="size-4" />
+              </button>
+            )}
           </div>
         </aside>
 
         <aside className="fixed inset-x-3 bottom-4 z-40 lg:hidden">
-          <div className="flex justify-center rounded-2xl border border-border/45 bg-card/82 p-2 backdrop-blur shadow-[0_10px_24px_-18px_hsl(var(--foreground)/0.35)] vfx-surface vfx-glass">
+          <div className="flex justify-center gap-2 rounded-2xl border border-border/45 bg-card/82 p-2 backdrop-blur shadow-[0_10px_24px_-18px_hsl(var(--foreground)/0.35)] vfx-surface vfx-glass">
             <button
               type="button"
               onClick={() => goto(snippetsHref)}
@@ -91,6 +106,17 @@ export function WorkspaceSideNav({
             >
               <Home className="size-4" />
             </button>
+            {showPlaygroundLink && playgroundSnippetId && (
+              <button
+                type="button"
+                onClick={() => goto(`/playground/${playgroundSnippetId}`)}
+                className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/55 hover:text-foreground animate-subtle-pop-in vfx-icon-chip"
+                title="open playground"
+                aria-label="open playground"
+              >
+                <Play className="size-4" />
+              </button>
+            )}
           </div>
         </aside>
       </>
@@ -194,7 +220,7 @@ export function WorkspaceSideNav({
             })}
           </div>
 
-          {(showPublicLink || showSnippetsLink || hasActions) && (
+          {(showPublicLink || showSnippetsLink || showPlaygroundLink || hasActions) && (
             <div className="my-2 h-px w-full bg-border/60" />
           )}
 
@@ -220,6 +246,18 @@ export function WorkspaceSideNav({
               >
                 <Home className="size-4 shrink-0" />
                 <span>my snippets</span>
+              </button>
+            )}
+
+            {showPlaygroundLink && playgroundSnippetId && (
+              <button
+                type="button"
+                onClick={() => goto(`/playground/${playgroundSnippetId}`)}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                title="playground"
+              >
+                <Play className="size-4 shrink-0" />
+                <span>playground</span>
               </button>
             )}
           </div>
@@ -314,6 +352,17 @@ export function WorkspaceSideNav({
               title="my snippets"
             >
               <Home className="size-4" />
+            </button>
+          )}
+
+          {showPlaygroundLink && playgroundSnippetId && (
+            <button
+              type="button"
+              onClick={() => goto(`/playground/${playgroundSnippetId}`)}
+              className={mobileIconButtonClass}
+              title="playground"
+            >
+              <Play className="size-4" />
             </button>
           )}
 
