@@ -124,19 +124,182 @@ create index if not exists snippet_tags_tag_idx on public.snippet_tags(tag_id);
 -- snippets: users can only crud their own rows, but anyone can view public snippets
 alter table public.snippets enable row level security;
 
--- workspaces (RLS disabled - accessed only via snippets/workspace_members policies)
+-- workspaces
+-- configurable owner/admin emails are stored in a single-row config table
+create table if not exists public.app_access_config (
+  id integer primary key default 1,
+  owner_emails text[] not null default '{}',
+  admin_emails text[] not null default '{}',
+  updated_at timestamptz not null default now(),
+  check (id = 1)
+);
+
+insert into public.app_access_config (id)
+values (1)
+on conflict (id) do nothing;
+
+revoke all on table public.app_access_config from public;
+revoke all on table public.app_access_config from anon;
+revoke all on table public.app_access_config from authenticated;
+
+create or replace function public.current_auth_email()
+returns text
+language sql
+stable
+as $$
+  select lower(coalesce(auth.jwt() ->> 'email', ''))
+$$;
+
+create or replace function public.is_configured_owner_or_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with cfg as (
+    select owner_emails, admin_emails
+    from public.app_access_config
+    where id = 1
+  )
+  select exists (
+    select 1
+    from cfg
+    where public.current_auth_email() = any(owner_emails)
+       or public.current_auth_email() = any(admin_emails)
+  )
+$$;
+
+create or replace function public.can_manage_workspace(p_workspace_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.workspaces w
+    where w.id = p_workspace_id
+      and (
+        w.owner_id = auth.uid()
+        or public.is_configured_owner_or_admin()
+      )
+  )
+$$;
+
+-- helper comments for configuration:
+-- update public.app_access_config
+-- set owner_emails = array['owner@example.com'],
+--     admin_emails = array['admin@example.com']
+-- where id = 1;
+
 -- Drop old workspace policies if they exist
 do $$
 begin
+  drop policy if exists "users can view own workspace memberships" on public.workspace_members;
+  drop policy if exists "owners can manage workspace memberships" on public.workspace_members;
+  drop policy if exists "owners/admin can insert workspace memberships" on public.workspace_members;
+  drop policy if exists "owners/admin can update workspace memberships" on public.workspace_members;
+  drop policy if exists "owners/admin can delete workspace memberships" on public.workspace_members;
+
   drop policy if exists "users can view own or shared workspaces" on public.workspaces;
   drop policy if exists "users can create own workspaces" on public.workspaces;
   drop policy if exists "owners can update workspaces" on public.workspaces;
   drop policy if exists "owners can delete workspaces" on public.workspaces;
+  drop policy if exists "owner/admin can select workspaces" on public.workspaces;
+  drop policy if exists "member can select workspaces" on public.workspaces;
+  drop policy if exists "public can select public workspaces" on public.workspaces;
+  drop policy if exists "owner/admin can insert workspaces" on public.workspaces;
+  drop policy if exists "owner/admin can update workspaces" on public.workspaces;
+  drop policy if exists "owner/admin can delete workspaces" on public.workspaces;
 end
 $$;
 
-alter table public.workspaces disable row level security;
+alter table public.workspaces enable row level security;
 alter table public.workspace_members enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspaces' and policyname = 'owner/admin can select workspaces') then
+    create policy "owner/admin can select workspaces"
+      on public.workspaces for select
+      using (
+        owner_id = auth.uid()
+        or public.is_configured_owner_or_admin()
+      );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspaces' and policyname = 'member can select workspaces') then
+    create policy "member can select workspaces"
+      on public.workspaces for select
+      using (
+        exists (
+          select 1 from public.workspace_members wm
+          where wm.workspace_id = workspaces.id
+            and wm.user_id = auth.uid()
+        )
+      );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspaces' and policyname = 'public can select public workspaces') then
+    create policy "public can select public workspaces"
+      on public.workspaces for select
+      using (is_public = true);
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspaces' and policyname = 'owner/admin can insert workspaces') then
+    create policy "owner/admin can insert workspaces"
+      on public.workspaces for insert
+      with check (
+        owner_id = auth.uid()
+        or public.is_configured_owner_or_admin()
+      );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspaces' and policyname = 'owner/admin can update workspaces') then
+    create policy "owner/admin can update workspaces"
+      on public.workspaces for update
+      using (
+        owner_id = auth.uid()
+        or public.is_configured_owner_or_admin()
+      )
+      with check (
+        owner_id = auth.uid()
+        or public.is_configured_owner_or_admin()
+      );
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspaces' and policyname = 'owner/admin can delete workspaces') then
+    create policy "owner/admin can delete workspaces"
+      on public.workspaces for delete
+      using (
+        owner_id = auth.uid()
+        or public.is_configured_owner_or_admin()
+      );
+  end if;
+end
+$$;
 
 do $$
 begin
@@ -150,23 +313,31 @@ $$;
 
 do $$
 begin
-  if not exists (select 1 from pg_policies where tablename = 'workspace_members' and policyname = 'owners can manage workspace memberships') then
-    create policy "owners can manage workspace memberships"
-      on public.workspace_members for all
-      using (
-        exists (
-          select 1 from public.workspaces w
-          where w.id = workspace_members.workspace_id
-            and w.owner_id = auth.uid()
-        )
-      )
-      with check (
-        exists (
-          select 1 from public.workspaces w
-          where w.id = workspace_members.workspace_id
-            and w.owner_id = auth.uid()
-        )
-      );
+  if not exists (select 1 from pg_policies where tablename = 'workspace_members' and policyname = 'owners/admin can insert workspace memberships') then
+    create policy "owners/admin can insert workspace memberships"
+      on public.workspace_members for insert
+      with check (public.can_manage_workspace(workspace_id));
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspace_members' and policyname = 'owners/admin can update workspace memberships') then
+    create policy "owners/admin can update workspace memberships"
+      on public.workspace_members for update
+      using (public.can_manage_workspace(workspace_id))
+      with check (public.can_manage_workspace(workspace_id));
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'workspace_members' and policyname = 'owners/admin can delete workspace memberships') then
+    create policy "owners/admin can delete workspace memberships"
+      on public.workspace_members for delete
+      using (public.can_manage_workspace(workspace_id));
   end if;
 end
 $$;
