@@ -26,14 +26,10 @@ export function AppLogo() {
       </div>
       <div className="leading-tight">
         <p className="text-sm font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">Snips</p>
-        <div
-          className="mt-0.5 inline-flex size-4 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
-          title="Code Library"
-          aria-hidden="true"
-        >
-          <Code2 className="size-3" />
+        <div className="mt-0.5 inline-flex items-center gap-1 rounded-md border border-border/40 bg-background/60 px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground animate-subtle-pop-in select-none">
+          <Code2 className="size-2.5 shrink-0" />
+          <span>code library</span>
         </div>
-        <span className="sr-only">Code Library</span>
       </div>
     </div>
   );

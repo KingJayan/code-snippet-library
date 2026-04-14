@@ -902,15 +902,9 @@ export default function SnippetsPage() {
         <div className="space-y-1">
           <AppLogo />
           {showHints && (
-            <div className="inline-flex items-center gap-2">
-              <span
-                className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
-                title="quick add with n, save with cmd/ctrl+enter"
-                aria-hidden="true"
-              >
-                <Keyboard className="size-3.5" />
-              </span>
-              <span className="sr-only">quick add with n, save with cmd/ctrl+enter</span>
+            <div className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-background/60 px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground animate-subtle-pop-in select-none">
+              <Keyboard className="size-2.5 shrink-0" />
+              <span>n · cmd+↵</span>
             </div>
           )}
         </div>

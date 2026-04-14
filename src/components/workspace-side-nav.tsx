@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Folder, FolderOpen, Globe, Home, Play } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, Globe, Home, Play } from "lucide-react";
 import { useNavigate } from "@/lib/use-navigate";
 import type { Workspace } from "@/lib/types";
 
@@ -51,24 +51,30 @@ export function WorkspaceSideNav({
   const { goto } = useNavigate();
   const [desktopActionsOpen, setDesktopActionsOpen] = useState(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
-  const [desktopPanelSize, setDesktopPanelSize] = useState<DesktopPanelSize>("full");
+  const [desktopPanelSize, setDesktopPanelSize] = useState<DesktopPanelSize>(() => {
+    if (typeof window === "undefined") return "full";
+    if (window.innerWidth < 1280) return "tiny";
+    if (window.innerWidth < 1536) return "small";
+    return "full";
+  });
   const [workspacePinsOpen, setWorkspacePinsOpen] = useState<Record<string, boolean>>({});
   const [dragOverWorkspaceId, setDragOverWorkspaceId] = useState<string | null>(null);
   const hasActions = actions.length > 0;
   const mobileIconButtonClass =
     "grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-background/45 text-foreground/75 transition-all duration-200 ease-out hover:bg-accent/55 hover:text-foreground active:scale-95";
 
+  const isTiny = desktopPanelSize === "tiny";
+
   const desktopPanelFrameClass =
     desktopPanelSize === "full"
       ? "top-6 bottom-6"
       : desktopPanelSize === "small"
-        ? "top-16 bottom-16"
-        : "top-44 bottom-44";
+        ? "top-10 bottom-10"
+        : "top-12 bottom-12";
 
-  const desktopPanelWidthClass = desktopPanelSize === "tiny" ? "w-52" : "w-60";
+  const desktopPanelWidthClass = isTiny ? "w-10" : desktopPanelSize === "small" ? "w-44" : "w-60";
 
-  const desktopScrollableAreaClass =
-    desktopPanelSize === "tiny" ? "flex-1 min-h-0 space-y-1 overflow-y-auto theme-scrollbar pr-1" : "flex-1 space-y-1 overflow-y-auto theme-scrollbar pr-1";
+  const desktopScrollableAreaClass = "flex-1 min-h-0 space-y-1 overflow-y-auto theme-scrollbar" + (isTiny ? "" : " pr-1");
 
   const panelSizes: DesktopPanelSize[] = ["tiny", "small", "full"];
 
@@ -130,9 +136,11 @@ export function WorkspaceSideNav({
 
   return (
     <>
-      <aside className={`fixed left-4 z-40 hidden lg:block ${desktopPanelWidthClass} ${desktopPanelFrameClass}`}>
-        <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-card/78 p-2 backdrop-blur shadow-[0_14px_32px_-22px_hsl(var(--foreground)/0.4)] vfx-surface vfx-glass">
-          <div className="flex items-center justify-between px-2 pb-2 pt-1">
+      <aside className={`fixed left-4 z-40 hidden lg:block ${desktopPanelWidthClass} ${desktopPanelFrameClass} transition-all duration-200 ease-out`}>
+        <div className={`flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-card/78 backdrop-blur shadow-[0_14px_32px_-22px_hsl(var(--foreground)/0.4)] vfx-surface vfx-glass ${isTiny ? "p-1.5 items-center" : "p-2"}`}>
+
+          {/* Header */}
+          <div className={`flex shrink-0 pb-2 pt-1 ${isTiny ? "flex-col items-center gap-1" : "items-center justify-between px-2"}`}>
             <div
               className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
               title="workspaces"
@@ -141,34 +149,89 @@ export function WorkspaceSideNav({
               <Folder className="size-3" />
             </div>
             <span className="sr-only">workspaces</span>
-            <div className="flex items-center gap-1">
-              {panelSizes.map((size) => {
-                const isActive = desktopPanelSize === size;
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setDesktopPanelSize(size)}
-                    className={`rounded-md px-1.5 py-0.5 text-[10px] uppercase tracking-wide transition-colors ${
-                      isActive
-                        ? "bg-accent/70 text-foreground"
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                    }`}
-                    title={`${size} panel`}
-                    aria-label={`${size} panel`}
-                  >
-                    {size[0]}
-                  </button>
-                );
-              })}
-            </div>
+
+            {isTiny ? (
+              <button
+                type="button"
+                onClick={() => setDesktopPanelSize("small")}
+                className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground group/expand"
+                title="expand panel"
+                aria-label="expand panel"
+              >
+                <ChevronRight className="size-3 transition-transform duration-150 group-hover/expand:translate-x-px" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-1">
+                {panelSizes.map((size) => {
+                  const isActive = desktopPanelSize === size;
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setDesktopPanelSize(size)}
+                      className={`rounded-md px-1.5 py-0.5 text-[10px] uppercase tracking-wide transition-colors ${
+                        isActive
+                          ? "bg-accent/70 text-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                      }`}
+                      title={`${size} panel`}
+                      aria-label={`${size} panel`}
+                    >
+                      {size[0]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
+          {/* Workspace list */}
           <div className={desktopScrollableAreaClass}>
             {workspaces.map((workspace) => {
               const active = workspace.id === activeWorkspaceId;
               const pinnedTitles = workspacePinnedTitles[workspace.id] ?? [];
               const pinsOpen = Boolean(workspacePinsOpen[workspace.id]);
+
+              if (isTiny) {
+                return (
+                  <button
+                    key={workspace.id}
+                    type="button"
+                    onClick={() => onSelectWorkspace?.(workspace.id)}
+                    onDragOver={(event) => {
+                      if (!onSnippetDropToWorkspace || !draggingSnippetId) return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      if (dragOverWorkspaceId !== workspace.id) setDragOverWorkspaceId(workspace.id);
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverWorkspaceId === workspace.id) setDragOverWorkspaceId(null);
+                    }}
+                    onDrop={(event) => {
+                      if (!onSnippetDropToWorkspace) return;
+                      event.preventDefault();
+                      const droppedSnippetId =
+                        event.dataTransfer.getData("text/snips-snippet-id") ||
+                        event.dataTransfer.getData("text/plain");
+                      setDragOverWorkspaceId(null);
+                      if (!droppedSnippetId) return;
+                      onSnippetDropToWorkspace(droppedSnippetId, workspace.id);
+                    }}
+                    disabled={!canSelect}
+                    className={`grid size-7 shrink-0 place-items-center rounded-lg transition-all duration-200 ease-out active:scale-[0.92] ${
+                      active
+                        ? "bg-accent/65 text-foreground"
+                        : dragOverWorkspaceId === workspace.id
+                        ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                    }`}
+                    title={workspace.name.trim() || "untitled workspace"}
+                  >
+                    {active ? <FolderOpen className="size-3.5" /> : <Folder className="size-3.5" />}
+                  </button>
+                );
+              }
+
               return (
                 <div key={workspace.id} className="rounded-lg">
                   <button
@@ -198,7 +261,7 @@ export function WorkspaceSideNav({
                       onSnippetDropToWorkspace(droppedSnippetId, workspace.id);
                     }}
                     disabled={!canSelect}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-200 ease-out active:scale-[0.99] ${
+                    className={`group/ws flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-all duration-200 ease-out active:scale-[0.99] ${
                       active
                         ? "bg-accent/65 text-foreground"
                         : dragOverWorkspaceId === workspace.id
@@ -207,12 +270,14 @@ export function WorkspaceSideNav({
                     }`}
                     title={workspace.name}
                   >
-                    {active ? <FolderOpen className="size-4 shrink-0" /> : <Folder className="size-4 shrink-0" />}
-                    <span className="truncate">{workspace.name.trim() || "untitled workspace"}</span>
+                    {active
+                      ? <FolderOpen className="size-3.5 shrink-0 transition-transform duration-150 group-hover/ws:scale-110" />
+                      : <Folder className="size-3.5 shrink-0 transition-transform duration-150 group-hover/ws:scale-110" />}
+                    <span className="truncate text-xs animate-subtle-slide-right">{workspace.name.trim() || "untitled workspace"}</span>
                   </button>
 
                   {pinnedTitles.length > 0 && (
-                    <div className="mt-0.5 pl-8 pr-1">
+                    <div className="mt-0.5 pl-7 pr-1">
                       <button
                         type="button"
                         onClick={() =>
@@ -251,52 +316,85 @@ export function WorkspaceSideNav({
           </div>
 
           {(showPublicLink || showSnippetsLink || showPlaygroundLink || hasActions) && (
-            <div className="my-2 h-px w-full bg-border/60" />
+            <div className={`bg-border/60 ${isTiny ? "my-1.5 h-px w-6" : "my-2 h-px w-full"}`} />
           )}
 
-          <div className="space-y-1">
+          <div className={`shrink-0 ${isTiny ? "flex flex-col items-center gap-1" : "space-y-1"}`}>
             {showPublicLink && (
-              <button
-                type="button"
-                onClick={() => goto("/public")}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                title="public snippets"
-              >
-                <Globe className="size-4 shrink-0" />
-                <span>public snippets</span>
-              </button>
+              isTiny ? (
+                <button
+                  type="button"
+                  onClick={() => goto("/public")}
+                  className="grid size-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                  title="public snippets"
+                >
+                  <Globe className="size-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => goto("/public")}
+                  className="group/nav flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                  title="public snippets"
+                >
+                  <Globe className="size-3.5 shrink-0 transition-transform duration-150 group-hover/nav:scale-110" />
+                  <span className="animate-subtle-slide-right">public snippets</span>
+                </button>
+              )
             )}
 
             {showSnippetsLink && (
-              <button
-                type="button"
-                onClick={() => goto("/snippets")}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                title="my snippets"
-              >
-                <Home className="size-4 shrink-0" />
-                <span>my snippets</span>
-              </button>
+              isTiny ? (
+                <button
+                  type="button"
+                  onClick={() => goto("/snippets")}
+                  className="grid size-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                  title="my snippets"
+                >
+                  <Home className="size-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => goto("/snippets")}
+                  className="group/nav flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                  title="my snippets"
+                >
+                  <Home className="size-3.5 shrink-0 transition-transform duration-150 group-hover/nav:scale-110" />
+                  <span className="animate-subtle-slide-right">my snippets</span>
+                </button>
+              )
             )}
 
             {showPlaygroundLink && playgroundSnippetId && (
-              <button
-                type="button"
-                onClick={() => goto(`/playground/${playgroundSnippetId}`)}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                title="playground"
-              >
-                <Play className="size-4 shrink-0" />
-                <span>playground</span>
-              </button>
+              isTiny ? (
+                <button
+                  type="button"
+                  onClick={() => goto(`/playground/${playgroundSnippetId}`)}
+                  className="grid size-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                  title="playground"
+                >
+                  <Play className="size-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => goto(`/playground/${playgroundSnippetId}`)}
+                  className="group/nav flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                  title="playground"
+                >
+                  <Play className="size-3.5 shrink-0 transition-transform duration-150 group-hover/nav:scale-110" />
+                  <span className="animate-subtle-slide-right">playground</span>
+                </button>
+              )
             )}
           </div>
 
-          {hasActions && (
+          {hasActions && !isTiny && (
             <div className="mt-2 w-full" data-workspace-desktop-menu>
               <button
                 type="button"
-                className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
                   desktopActionsOpen
                     ? "bg-accent/60 text-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -306,7 +404,7 @@ export function WorkspaceSideNav({
                 aria-label="workspace options"
                 aria-expanded={desktopActionsOpen}
               >
-                <span>workspace actions</span>
+                <span className="animate-subtle-slide-right">workspace actions</span>
                 <span className="text-base leading-none">{desktopActionsOpen ? "−" : "+"}</span>
               </button>
 
@@ -326,7 +424,7 @@ export function WorkspaceSideNav({
                       setDesktopActionsOpen(false);
                     }}
                     disabled={action.disabled}
-                    className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                    className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
                       action.destructive
                         ? "text-destructive hover:bg-destructive/10 disabled:text-destructive/45"
                         : "text-foreground/90 hover:bg-accent/55 disabled:text-muted-foreground"
