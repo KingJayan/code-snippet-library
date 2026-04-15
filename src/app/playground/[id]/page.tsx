@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Loader2, Home } from "lucide-react";
 import { SnippetPlayground } from "@/components/snippet-playground";
 import { WorkspaceSideNav } from "@/components/workspace-side-nav";
-import { getSnippetById } from "@/lib/snippet-service";
+import { getSnippetById, getPublicSnippetById } from "@/lib/snippet-service";
 import type { SnippetWithTags } from "@/lib/types";
 
 export default function PlaygroundPage() {
@@ -27,7 +27,16 @@ export default function PlaygroundPage() {
 
     setLoading(true);
 
-    const { data, error: serviceError } = await getSnippetById(snippetId);
+    let { data, error: serviceError } = await getSnippetById(snippetId);
+
+    // Fall back to public fetch if auth check fails (e.g. unauthenticated user with a shared link)
+    if (serviceError) {
+      const pub = await getPublicSnippetById(snippetId);
+      if (pub.data) {
+        data = pub.data;
+        serviceError = null;
+      }
+    }
 
     if (serviceError) {
       setError(serviceError);

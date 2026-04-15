@@ -7,8 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-display: var(--font-syne);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -434,7 +435,7 @@ html.low-hw-reduce-animations * {
   font-size: 10.5px;
   font-weight: 600;
   color: var(--foreground);
-  font-family: ui-monospace, "Geist Mono", monospace;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -442,7 +443,7 @@ html.low-hw-reduce-animations * {
 
 .l3c-badge {
   font-size: 9px;
-  font-family: ui-monospace, "Geist Mono", monospace;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
   padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid;

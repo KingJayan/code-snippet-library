@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Syne, JetBrains_Mono } from "next/font/google";
 import { AccessibilitySettings } from "@/components/accessibility-settings";
 import { DevDebugPanel } from "@/components/dev-debug-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -8,13 +8,18 @@ import { VimShortcutsManager } from "@/components/vim-shortcuts-manager";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const syne = Syne({
+  variable: "--font-syne",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -120,7 +125,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${syne.variable} ${jetbrainsMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <TooltipProvider delayDuration={200}>

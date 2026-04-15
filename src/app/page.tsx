@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { getCurrentUser } from "@/lib/supabase";
@@ -25,12 +25,19 @@ const HeroScene = dynamic(
 
 export default function LandingPage() {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     getCurrentUser().then((user) => {
-      if (user) router.replace("/snippets");
+      if (user) {
+        router.replace("/snippets");
+      } else {
+        setAuthChecked(true);
+      }
     });
   }, [router]);
+
+  if (!authChecked) return null;
 
   return (
     <main style={{ background: "#09090b", minHeight: "100svh" }}>

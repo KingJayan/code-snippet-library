@@ -1,18 +1,18 @@
 const FEATURES = [
   {
     num: "01",
-    name: "Workspaces",
-    desc: "Organize by project. Invite teammates with editor or viewer roles — keep everything exactly where it belongs.",
+    name: "workspaces",
+    desc: "keep things separated. share with teammates if you want.",
   },
   {
     num: "02",
-    name: "AI Assistant",
-    desc: "Ask your library anything. Refactor, explain, or improve code with context-aware AI that knows your snippets.",
+    name: "ai",
+    desc: "ask it to explain, rewrite, or just vibe-check your code.",
   },
   {
     num: "03",
-    name: "Instant Search",
-    desc: "Find any snippet by title, tag, language, or content. Keyboard-first navigation, zero latency.",
+    name: "search",
+    desc: "find anything, fast. by name, tag, language, whatever.",
   },
 ] as const;
 
@@ -32,7 +32,7 @@ export function FeaturesStrip() {
               <p className="mb-3 font-mono text-[10px] tracking-widest text-zinc-600">
                 {num}
               </p>
-              <p className="mb-2 text-sm font-semibold text-white">{name}</p>
+              <p className="mb-2 text-sm font-semibold text-white" style={{ fontFamily: "var(--font-display)" }}>{name}</p>
               <p className="text-sm leading-relaxed text-zinc-500">{desc}</p>
             </div>
           ))}
