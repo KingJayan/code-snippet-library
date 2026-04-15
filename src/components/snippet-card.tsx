@@ -62,7 +62,9 @@ function SnippetCardRaw({
                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       data-selected={selected ? "true" : "false"}
       aria-current={selected ? "true" : undefined}
-      style={selected ? { boxShadow: "0 0 0 2px color-mix(in oklch, var(--ring) 72%, transparent 28%)" } : undefined}
+      style={selected
+        ? { contain: "layout style", boxShadow: "0 0 0 2px color-mix(in oklch, var(--ring) 72%, transparent 28%)" }
+        : { contain: "layout style" }}
       tabIndex={0}
       title={snippet.title}
     >
