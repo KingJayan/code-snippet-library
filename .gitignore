@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 CLAUDE.md
+todo-future.txt
 
 # debug
 npm-debug.log*
