@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Accessibility,
   Check,
@@ -167,6 +167,9 @@ export function AccessibilitySettings() {
   const [activeGroup, setActiveGroup] = useState<SettingsGroup>("personalization");
   const [recentChanges, setRecentChanges] = useState<RecentChange[]>(() => readInitialRecentChanges());
 
+  const panelWrapRef = useRef<HTMLDivElement>(null);
+  const panelInnerRef = useRef<HTMLDivElement>(null);
+
   const normalizedQuery = settingsQuery.trim().toLowerCase();
   const perfRecommendations = useMemo(
     () => getPerformanceRecommendations(hardwareProfile),
@@ -236,6 +239,21 @@ export function AccessibilitySettings() {
       window.removeEventListener("snips-settings-changed", handleSettingsChanged as EventListener);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const outer = panelWrapRef.current;
+    const inner = panelInnerRef.current;
+    if (!outer || !inner) return;
+
+    const update = () => {
+      outer.style.height = `${inner.offsetHeight}px`;
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [activeGroup]);
 
   const enabledCount = useMemo(() => {
     const a11yCount = Object.values(settings).filter(Boolean).length;
@@ -460,6 +478,18 @@ export function AccessibilitySettings() {
             </div>
           </DialogHeader>
 
+          <div className="border-b border-border/70 px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-1.5">
+              <Search className="size-3.5 shrink-0 text-muted-foreground" />
+              <input
+                value={settingsQuery}
+                onChange={(event) => setSettingsQuery(event.target.value)}
+                placeholder="search all settings…"
+                className="h-6 w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
+              />
+            </div>
+          </div>
+
           <div className="grid min-h-0 flex-1 grid-cols-[130px_minmax(0,1fr)]">
             <nav className="border-r border-border/70 bg-muted/20 p-2">
               <div className="space-y-1">
@@ -484,20 +514,11 @@ export function AccessibilitySettings() {
               </div>
             </nav>
 
-            <div className="min-h-0 overflow-y-auto theme-scrollbar p-4">
-              <div className="mb-3 rounded-lg border border-border/70 bg-card px-3 py-2">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Search className="size-3.5" />
-                  search settings
-                </label>
-                <input
-                  value={settingsQuery}
-                  onChange={(event) => setSettingsQuery(event.target.value)}
-                  placeholder="search by keyword"
-                  className="mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-
+            <div
+              ref={panelWrapRef}
+              className="overflow-hidden transition-[height] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+            >
+            <div key={activeGroup} ref={panelInnerRef} className="max-h-[60vh] overflow-y-auto theme-scrollbar p-4 animate-subtle-fade-up">
               {showRecentInThisSection && recentChanges.length > 0 && (
                 <section className="mb-3 rounded-lg border border-border/70 bg-card px-3 py-2">
                   <p className="text-xs font-medium">recently changed</p>
@@ -908,6 +929,7 @@ export function AccessibilitySettings() {
                   </div>
                 </section>
               )}
+            </div>
             </div>
           </div>
 
