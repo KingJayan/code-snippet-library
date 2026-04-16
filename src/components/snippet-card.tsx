@@ -2,7 +2,7 @@
 
 import { memo, type DragEvent } from "react";
 import Link from "next/link";
-import { Clock, Code2, ArrowUpRight, Pin, Globe, Play } from "lucide-react";
+import { Clock, Code2, ArrowUpRight, Pin, Globe, Play, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LANGUAGES } from "@/lib/constants";
@@ -13,6 +13,7 @@ interface SnippetCardProps {
   snippet: SnippetSummaryWithTags;
   onTagClick?: (tagName: string) => void;
   onTogglePin?: (id: string, pinned: boolean) => void;
+  onDelete?: (id: string) => void;
   onDragStart?: (snippetId: string) => void;
   onDragEnd?: () => void;
   detailBasePath?: "/snippets" | "/public";
@@ -23,6 +24,7 @@ function SnippetCardRaw({
   snippet,
   onTagClick,
   onTogglePin,
+  onDelete,
   onDragStart,
   onDragEnd,
   detailBasePath = "/snippets",
@@ -101,6 +103,22 @@ function SnippetCardRaw({
           >
             <Pin className={`size-3 ${snippet.pinned ? "fill-current" : ""}`} />
           </button>
+
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.confirm(`delete "${snippet.title}"?`)) {
+                  onDelete(snippet.id);
+                }
+              }}
+              className="vfx-icon-chip rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label="delete snippet"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          )}
 
           {snippet.public && (
             <Badge variant="outline" className="shrink-0 text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.5">

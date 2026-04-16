@@ -34,6 +34,7 @@ import { TagFilter } from "@/components/tag-filter";
 import {
   createSnippet,
   createWorkspace,
+  deleteSnippet,
   deleteWorkspace,
   listSnippets,
   listWorkspaces,
@@ -621,6 +622,19 @@ export default function SnippetsPage() {
     showToast(pinned ? "pinned" : "unpinned", "success");
   }
 
+  async function handleDeleteSnippet(id: string) {
+    showToast("deleting...", "info");
+    const { error: serviceError } = await deleteSnippet(id);
+    if (serviceError) {
+      showToast(serviceError, "error");
+      return;
+    }
+    const next = snippets.filter((s) => s.id !== id);
+    setSnippets(next);
+    writeCachedSnippets(activeWorkspaceId, next);
+    showToast("snippet deleted", "success");
+  }
+
   async function handleCreateWorkspace() {
     setWorkspaceEditorMode("create");
     setWorkspaceNameInput("");
@@ -952,16 +966,10 @@ export default function SnippetsPage() {
         <div className="space-y-3">
           <SearchBar value={search} onChange={setSearch} inputRef={searchInputRef} />
           {showHints && (
-            <div className="px-1 inline-flex items-center gap-2">
-              <span
-                className="inline-flex size-5 items-center justify-center rounded-md text-muted-foreground animate-subtle-pop-in vfx-icon-chip"
-                title="power search supports tag, language, and pinned filters"
-                aria-hidden="true"
-              >
-                <Search className="size-3" />
-              </span>
-              <span className="sr-only">power search supports tag, language, and pinned filters</span>
-            </div>
+            <p className="inline-flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground animate-subtle-pop-in select-none">
+              <Search className="size-3 shrink-0" />
+              power search: <span className="font-mono">tag:react</span> · <span className="font-mono">lang:ts</span> · <span className="font-mono">is:pinned</span>
+            </p>
           )}
           <TagFilter tags={allTags} activeTag={activeTag} onTagChange={setActiveTag} />
         </div>
@@ -1051,6 +1059,7 @@ export default function SnippetsPage() {
                     selected={vimShortcutsEnabled && row.index === selectedSnippetIndex}
                     onTagClick={(tag) => setActiveTag(tag)}
                     onTogglePin={handleTogglePin}
+                    onDelete={handleDeleteSnippet}
                     onDragStart={(id) => setDraggingSnippetId(id)}
                     onDragEnd={() => setDraggingSnippetId(null)}
                   />

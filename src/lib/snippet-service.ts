@@ -304,7 +304,7 @@ async function upsertTags(client: NonNullable<typeof supabase>, tagNames: string
 
   const { error: upsertError } = await client
     .from("tags")
-    .upsert(normalized.map((name) => ({ name })), { onConflict: "name" });
+    .upsert(normalized.map((name) => ({ name })), { onConflict: "name", ignoreDuplicates: true });
 
   if (upsertError) {
     throw new Error(upsertError.message);

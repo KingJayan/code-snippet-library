@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Loader2, Palette } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { LANGUAGES } from "@/lib/constants";
 import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { cn } from "@/lib/utils";
@@ -28,12 +28,12 @@ function setHighlightCache(key: string, html: string) {
 }
 
 const THEMES = [
-  { value: "github-dark", label: "github dark" },
-  { value: "github-light", label: "github light" },
-  { value: "dracula", label: "dracula" },
-  { value: "nord", label: "nord" },
-  { value: "monokai", label: "monokai" },
-  { value: "one-dark-pro", label: "one dark" },
+  { value: "github-dark", label: "github dark", bg: "#24292e", border: "#444d56", text: "#e1e4e8" },
+  { value: "github-light", label: "github light", bg: "#ffffff", border: "#e1e4e8", text: "#24292e" },
+  { value: "dracula", label: "dracula", bg: "#282a36", border: "#44475a", text: "#f8f8f2" },
+  { value: "nord", label: "nord", bg: "#2e3440", border: "#434c5e", text: "#d8dee9" },
+  { value: "monokai", label: "monokai", bg: "#272822", border: "#3e3d32", text: "#f8f8f2" },
+  { value: "one-dark-pro", label: "one dark", bg: "#282c34", border: "#3e4452", text: "#abb2bf" },
 ] as const;
 
 type Theme = typeof THEMES[number]["value"];
@@ -195,30 +195,42 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 		}
 	}
 
+	const themeColors = THEMES.find((t) => t.value === theme) ?? THEMES[0];
+
 	return (
-		<section className={cn("flex min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xs vfx-surface vfx-sheen vfx-edge-light vfx-float-shadow", className)}>
-			<div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
-				<span className="font-mono text-xs text-zinc-300">{language}</span>
+		<section
+			className={cn("flex min-h-0 flex-col overflow-hidden rounded-2xl shadow-xs vfx-surface vfx-sheen vfx-edge-light vfx-float-shadow", className)}
+			style={{ backgroundColor: themeColors.bg, borderColor: themeColors.border, borderWidth: 1, borderStyle: "solid" }}
+		>
+			<div
+				className="flex items-center justify-between px-3 py-2"
+				style={{ borderBottom: `1px solid ${themeColors.border}` }}
+			>
+				<span className="font-mono text-xs" style={{ color: themeColors.text }}>{language}</span>
 				<div className="flex items-center gap-1">
 					<div className="relative" data-theme-selector>
-						<Button
-							variant="ghost"
-							size="xs"
-							className="text-zinc-300 hover:bg-zinc-800 hover:text-white"
+						<button
+							className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs opacity-70 transition-opacity hover:opacity-100"
+							style={{ color: themeColors.text }}
 							onClick={() => setShowThemes(!showThemes)}
 							aria-label="change theme"
 						>
 							<Palette className="size-3" />
-						</Button>
+						</button>
 						{showThemes && (
-							<div className="absolute right-0 top-full z-50 mt-1 min-w-32 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-lg">
+							<div
+								className="absolute right-0 top-full z-50 mt-1 min-w-32 rounded-lg py-1 shadow-lg"
+								style={{ backgroundColor: themeColors.bg, border: `1px solid ${themeColors.border}` }}
+							>
 								{THEMES.map((t) => (
 									<button
 										key={t.value}
 										onClick={() => changeTheme(t.value)}
-										className={`w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-800 ${
-											theme === t.value ? "bg-zinc-800 text-white" : "text-zinc-300"
-										}`}
+										className="w-full px-3 py-1.5 text-left text-xs transition-opacity hover:opacity-80"
+										style={{
+											color: t.text,
+											backgroundColor: t.value === theme ? t.border : "transparent",
+										}}
 									>
 										{t.label}
 									</button>
@@ -226,10 +238,9 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 							</div>
 						)}
 					</div>
-					<Button
-						variant="ghost"
-						size="xs"
-						className="text-zinc-300 hover:bg-zinc-800 hover:text-white"
+					<button
+						className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs opacity-70 transition-opacity hover:opacity-100"
+						style={{ color: themeColors.text }}
 						onClick={copyCode}
 						aria-label="copy code"
 					>
@@ -239,12 +250,12 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 							: copyState === "failed"
 								? "failed"
 								: "copy"}
-					</Button>
+					</button>
 				</div>
 			</div>
 
 			{error && (
-				<p className="border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-300">
+				<p className="px-3 py-2 text-xs" style={{ borderBottom: `1px solid ${themeColors.border}`, color: themeColors.text, opacity: 0.7 }}>
 					{error}
 				</p>
 			)}

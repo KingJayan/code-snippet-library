@@ -100,7 +100,8 @@ export function SnippetDialog({
 			const merged = [...new Set([...existingTags, ...generatedTags])];
 			setTagsInput(merged.join(", "));
 		} catch (aiError) {
-			setError(aiError instanceof Error ? aiError.message : "failed to generate tags");
+			const msg = aiError instanceof Error ? aiError.message : "failed to generate tags";
+			setError(msg.includes("api key is required") ? "no api key — open settings → AI to add one" : msg);
 		} finally {
 			setTagging(false);
 		}
@@ -125,7 +126,8 @@ export function SnippetDialog({
 
 			updateField("description", description);
 		} catch (aiError) {
-			setError(aiError instanceof Error ? aiError.message : "failed to generate docs");
+			const msg = aiError instanceof Error ? aiError.message : "failed to generate docs";
+			setError(msg.includes("api key is required") ? "no api key — open settings → AI to add one" : msg);
 		} finally {
 			setDocGenerating(false);
 		}

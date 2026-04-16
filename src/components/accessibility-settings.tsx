@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Accessibility,
   Check,
+  ChevronDown,
   Github,
   Link,
   Palette,
@@ -722,15 +723,18 @@ export function AccessibilitySettings() {
                   {matchesQuery("theme", "code", "appearance") && (
                     <label className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card px-3 py-2">
                       <span className="text-sm font-medium">default code theme</span>
-                      <select
-                        className="mt-1 h-8 w-full appearance-none rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        value={codeTheme}
-                        onChange={(event) => updateCodeTheme(event.target.value)}
-                      >
-                        {CODE_THEME_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
+                      <div className="relative mt-1">
+                        <select
+                          className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm text-foreground shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                          value={codeTheme}
+                          onChange={(event) => updateCodeTheme(event.target.value)}
+                        >
+                          {CODE_THEME_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      </div>
                     </label>
                   )}
                 </section>

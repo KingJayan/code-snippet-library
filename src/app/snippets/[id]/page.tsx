@@ -42,6 +42,7 @@ import { formatSnippetForCopy, type SnippetCopyMode } from "@/lib/copy-modes";
 import { isAiSimilarityEnabled, rankSimilarSnippets, type SimilarSnippetResult } from "@/lib/ai/client-tools";
 import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { timeAgo } from "@/lib/time";
+import { renderMarkdown as renderMarkdownDescription } from "@/lib/utils";
 import type { SnippetDraft, SnippetWithTags } from "@/lib/types";
 
 function isTypingElement(target: EventTarget | null) {
@@ -865,7 +866,10 @@ export default function SnippetDetailPage() {
               <div className="space-y-2 flex-1">
                 <h1 className="text-xl font-semibold tracking-tight">{snippet.title}</h1>
                 {snippet.description && (
-                  <p className="text-sm text-muted-foreground">{snippet.description}</p>
+                  <div
+                    className="text-sm text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdownDescription(snippet.description) }}
+                  />
                 )}
               </div>
               {snippet.public && (
