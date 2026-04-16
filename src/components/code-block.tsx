@@ -207,7 +207,7 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 			style={{ backgroundColor: themeColors.bg, borderColor: themeColors.border, borderWidth: 1, borderStyle: "solid" }}
 		>
 			<div
-				className="flex items-center justify-between px-3 py-2"
+				className="relative z-20 flex items-center justify-between px-3 py-2"
 				style={{ borderBottom: `1px solid ${themeColors.border}` }}
 			>
 				<span className="font-mono text-xs" style={{ color: themeColors.text }}>{language}</span>
@@ -223,7 +223,7 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 						</button>
 						{showThemes && (
 							<div
-								className="absolute right-0 top-full z-50 mt-1 min-w-32 rounded-lg py-1 shadow-lg"
+								className="absolute right-0 top-full z-[60] mt-1 min-w-32 rounded-lg py-1 shadow-lg"
 								style={{ backgroundColor: themeColors.bg, border: `1px solid ${themeColors.border}` }}
 							>
 								{THEMES.map((t) => (
