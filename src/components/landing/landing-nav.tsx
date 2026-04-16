@@ -28,17 +28,27 @@ export function LandingNav() {
           : undefined
       }
     >
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <AppLogo />
-        <Link href="/snippets">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white"
-          >
-            Sign in
-          </Button>
-        </Link>
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-8">
+        <div className="flex items-center gap-3">
+          <AppLogo />
+          <span className="hidden sm:inline-flex items-center rounded-full border border-indigo-800/60 bg-indigo-950/50 px-2 py-0.5 font-mono text-[9px] tracking-widest text-indigo-500 uppercase">
+            beta
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/public" className="hidden sm:block text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+            explore
+          </Link>
+          <Link href="/snippets">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-zinc-700 bg-transparent text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            >
+              sign in
+            </Button>
+          </Link>
+        </div>
       </div>
     </nav>
   );
