@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CodeBlock } from "@/components/code-block";
+import { CodeEditor } from "@/components/code-editor";
 import { WorkspaceSideNav } from "@/components/workspace-side-nav";
 import { LANGUAGE_OPTIONS } from "@/lib/constants";
 import {
@@ -954,11 +955,11 @@ export default function SnippetDetailPage() {
             <section className="rounded-2xl border border-border/70 border-accent/50 bg-card/70 p-3 vfx-surface vfx-sheen vfx-edge-light vfx-glass vfx-float-shadow">
               <label className="flex flex-col gap-2">
                 <span className="text-xs font-semibold text-muted-foreground">code</span>
-                <Textarea
+                <CodeEditor
                   value={editingDraft.code}
-                  onChange={(e) => setEditingDraft({ ...editingDraft, code: e.target.value })}
-                  className="h-[50vh] min-h-[280px] sm:h-[56vh] sm:min-h-[360px] lg:h-[62vh] lg:max-h-[780px] font-mono text-sm resize-none"
-                  spellCheck="false"
+                  onChange={(value) => setEditingDraft({ ...editingDraft, code: value })}
+                  language={editingDraft.language}
+                  className="h-[50vh] min-h-[280px] sm:h-[56vh] sm:min-h-[360px] lg:h-[62vh] lg:max-h-[780px] overflow-hidden rounded-md border border-input"
                 />
               </label>
             </section>

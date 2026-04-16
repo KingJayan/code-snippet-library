@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { CodeEditor } from "@/components/code-editor";
 import { generateDescriptionForSnippet, generateTagsForSnippet } from "@/lib/ai/client-tools";
 import { LANGUAGE_OPTIONS } from "@/lib/constants";
 import type { SnippetDraft, SnippetWithTags } from "@/lib/types";
@@ -272,12 +273,12 @@ export function SnippetDialog({
 							/>
 						</label>
 
-						<Textarea
+						<CodeEditor
 							value={draft.code}
-							onChange={(event) => updateField("code", event.target.value)}
+							onChange={(value) => updateField("code", value)}
+							language={draft.language}
 							placeholder="paste code..."
-							className="min-h-72 max-h-[50vh] font-mono text-xs leading-relaxed"
-							data-vim-editor="1"
+							className="min-h-72 max-h-[50vh] overflow-hidden rounded-md border border-input"
 						/>
 
 						{error && (

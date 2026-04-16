@@ -36,6 +36,7 @@ export function LandingCta() {
                   </Button>
                 </Link>
                 <p className="text-xs text-zinc-700">just click the button already</p>
+                <p className="text-xs text-zinc-700">you know you want to</p>
               </div>
             </div>
           </section>

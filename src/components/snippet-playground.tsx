@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { CodeEditor } from "@/components/code-editor";
 import {
   executeInBrowser,
   type BrowserExecutionResult,
@@ -134,12 +135,12 @@ export function SnippetPlayground({
           <span className="text-xs text-muted-foreground">
             {language === "md" ? "markdown source" : language === "txt" ? "text content" : `code editor (${lineCount} lines)`}
           </span>
-          <Textarea
+          <CodeEditor
             value={code}
-            onChange={(event) => setCode(event.target.value)}
-            className="min-h-64 font-mono text-xs leading-relaxed"
+            onChange={setCode}
+            language={language}
             placeholder={language === "md" ? "write markdown..." : language === "txt" ? "plain text..." : "write or paste runnable code"}
-            data-vim-editor="1"
+            className="min-h-64 overflow-hidden rounded-md border border-input"
           />
         </label>
 
