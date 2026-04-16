@@ -1,11 +1,9 @@
 {
   "name": "code-snippet-library",
-  "version": "1.4.6",
+  "version": "1.4.8",
   "private": true,
   "scripts": {
-    "predev": "npm run version:sync",
     "dev": "next dev",
-    "prebuild": "npm run version:sync",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

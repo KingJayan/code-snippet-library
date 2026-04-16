@@ -41,7 +41,7 @@ function syncAppVersionModule(version) {
 }
 
 try {
-  const commitCount = getCommitCount();
+  const commitCount = getCommitCount() + 1;
   const version = versionFromCommitCount(commitCount);
   syncPackageVersion(version);
   syncAppVersionModule(version);
