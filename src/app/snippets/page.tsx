@@ -510,7 +510,7 @@ export default function SnippetsPage() {
   const rowVirtualizer = useVirtualizer({
     count: filteredSnippets.length,
     getScrollElement: () => listParentRef.current,
-    estimateSize: () => 164,
+    estimateSize: () => 156,
     overscan: 8,
   });
 
@@ -1051,7 +1051,7 @@ export default function SnippetsPage() {
               return (
                 <div
                   key={snippet.id}
-                  className="absolute top-0 left-0 w-full p-1"
+                  className="absolute top-0 left-0 w-full px-1 pb-1.5"
                   style={{ transform: `translateY(${row.start}px)` }}
                 >
                   <SnippetCard
