@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Copy, Loader2, Palette } from "lucide-react";
 
 import { LANGUAGES } from "@/lib/constants";
-import { readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
+import { emitSettingsChanged, readBoolSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 
 const HIGHLIGHT_CACHE = new Map<string, string>();
@@ -74,7 +74,10 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 	const [html, setHtml] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
-	const [theme, setTheme] = useState<Theme>("github-dark");
+	const [theme, setTheme] = useState<Theme>(() => {
+		if (typeof window === "undefined") return "github-dark";
+		return getStoredTheme();
+	});
 	const [showThemes, setShowThemes] = useState(false);
 	const [wrapLines, setWrapLines] = useState(false);
 	const [copyResetTimer, setCopyResetTimer] = useState<number | null>(null);
@@ -177,6 +180,7 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 	function changeTheme(newTheme: Theme) {
 		setTheme(newTheme);
 		setStoredTheme(newTheme);
+		emitSettingsChanged(SETTINGS_KEYS.codeTheme, newTheme);
 		setShowThemes(false);
 	}
 
@@ -226,11 +230,13 @@ export function CodeBlock({ code, language, className }: CodeBlockProps) {
 									<button
 										key={t.value}
 										onClick={() => changeTheme(t.value)}
-										className="w-full px-3 py-1.5 text-left text-xs transition-opacity hover:opacity-80"
+										className="w-full px-3 py-1.5 text-left text-xs transition-colors"
 										style={{
 											color: t.text,
 											backgroundColor: t.value === theme ? t.border : "transparent",
 										}}
+										onMouseEnter={(e) => { if (t.value !== theme) (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${t.border}66`; }}
+										onMouseLeave={(e) => { if (t.value !== theme) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
 									>
 										{t.label}
 									</button>

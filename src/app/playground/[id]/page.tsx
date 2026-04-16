@@ -1,22 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Home } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { SnippetPlayground } from "@/components/snippet-playground";
 import { WorkspaceSideNav } from "@/components/workspace-side-nav";
 import { getSnippetById, getPublicSnippetById } from "@/lib/snippet-service";
 import type { SnippetWithTags } from "@/lib/types";
 
+const DIRTY_MSG = "you have unsaved changes. leave anyway?";
+
 export default function PlaygroundPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [snippet, setSnippet] = useState<SnippetWithTags | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const countedViewRef = useRef<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
 
   const snippetId = useMemo(() => params?.id ?? "", [params?.id]);
+
+  function handleDirtyChange(dirty: boolean) {
+    setIsDirty(dirty);
+    isDirtyRef.current = dirty;
+  }
+
+  function navigate(href: string) {
+    if (isDirtyRef.current && !window.confirm(DIRTY_MSG)) return;
+    router.push(href);
+  }
+
+  // Intercept browser back / forward
+  useEffect(() => {
+    if (!isDirty) return;
+    window.history.pushState(null, "", window.location.href);
+    function handlePopstate() {
+      if (window.confirm(DIRTY_MSG)) {
+        window.history.go(-1);
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
+    }
+    window.addEventListener("popstate", handlePopstate);
+    return () => window.removeEventListener("popstate", handlePopstate);
+  }, [isDirty]);
 
   const load = useCallback(async () => {
     if (!snippetId) {
@@ -101,13 +130,14 @@ export default function PlaygroundPage() {
               <h1 className="text-xl font-semibold">{snippet.title || "playground"}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{snippet.language}</p>
             </div>
-            <Link
-              href={`/snippets/${snippet.id}`}
+            <button
+              type="button"
+              onClick={() => navigate(`/snippets/${snippet.id}`)}
               className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="size-4" />
               view snippet
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -117,6 +147,7 @@ export default function PlaygroundPage() {
           <SnippetPlayground
             initialCode={snippet.code}
             initialLanguage={snippet.language}
+            onDirtyChange={handleDirtyChange}
           />
         </div>
       </main>

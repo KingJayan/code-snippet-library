@@ -16,6 +16,7 @@ type SnippetPlaygroundProps = {
   initialCode: string;
   initialLanguage: string;
   onExecutionStats?: (stats: { runtimeMs: number | null; memoryKb: number | null }) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 const LANGUAGE_OPTIONS: Array<{ value: PlaygroundLanguage; label: string }> = [
@@ -45,6 +46,7 @@ export function SnippetPlayground({
   initialCode,
   initialLanguage,
   onExecutionStats,
+  onDirtyChange,
 }: SnippetPlaygroundProps) {
   const [language, setLanguage] = useState<PlaygroundLanguage>(() => toPlaygroundLanguage(initialLanguage));
   const [code, setCode] = useState(initialCode);
@@ -55,6 +57,10 @@ export function SnippetPlayground({
 
   const lineCount = useMemo(() => (code.length === 0 ? 0 : code.split("\n").length), [code]);
   const isDirty = code !== initialCode;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     if (!isDirty) return;
