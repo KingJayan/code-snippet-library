@@ -40,6 +40,7 @@ import {
   writeHardwarePreference,
   type CustomPerformanceProfile,
 } from "@/lib/hardware-detection";
+import { APP_VERSION } from "@/lib/app-version";
 
 type A11ySettings = {
   reducedMotion: boolean;
@@ -921,6 +922,7 @@ export function AccessibilitySettings() {
                   <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
                     <p className="text-sm font-medium">made with :)</p>
                     <p className="text-xs text-muted-foreground mt-1">built by jayan.</p>
+                    <p className="text-xs text-muted-foreground/80 mt-1">app version {APP_VERSION}</p>
                   </div>
                   <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
                     <div className="flex items-center gap-2">

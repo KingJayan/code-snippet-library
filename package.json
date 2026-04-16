@@ -1,12 +1,15 @@
 {
   "name": "code-snippet-library",
-  "version": "0.1.0",
+  "version": "1.4.6",
   "private": true,
   "scripts": {
+    "predev": "npm run version:sync",
     "dev": "next dev",
+    "prebuild": "npm run version:sync",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "version:sync": "node scripts/sync-version.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npx tsc --noEmit 2>&1 | grep -v 'cannot find type definition file for' || true"
