@@ -1,62 +1,44 @@
-# code snippet library
+<div align="center">
+  <h2><code>KingJayan/code-snippet-library</code></h2>
+  <p>minimal, fast personal (and shared) snippet vault.</p>
+</div>
 
-minimal, fast personal (and shared) snippet vault built with next.js, supabase, shadcn ui, and shiki.
+## features
 
-## active features list
+- organize + pin snippets  
+- public sharing + `/public` discovery  
+- fast tag search + themes  
+- magic link auth  
 
-- pin important snippets to top of list
-- make snippets public and share with anyone (with public browse page)
-- switch code themes (github-dark, github-light, dracula, nord, monokai, one-dark-pro)
-- tag-based filtering with search (duplicate tags auto-removed, 30 char max)
-- magic link authentication with session expiry handling
-- production-safe magic link redirect resolution (supports deployed app url)
-- keyboard shortcuts for quick actions (n, ?, esc)
-- snippet code preview on hover (first line in tooltip)
-- virtualized list for performance
-- loading skeletons for smoother ux
-- public snippets discovery page at `/public`
-- mobile-friendly floating action button
-- ai coding assistant sidebar on snippet detail pages (hidden in public view)
-- multi-provider ai support with mode-aware prompts (`improve`, `refactor`, `debug`, `explain`)
-- optional ai similarity search (default off), ai auto-tagging, and ai docs generation
-- unified settings with personalization, search, recent changes, and a11y controls
-- built-in execution playground for `python`, `cpp`, `txt`, and `md`
-- snippet benchmarks persisted on save (`chars`, `bytes`, `bits`, `lines`)
-- last edited + engagement metadata (`created_at`, `updated_at`, `view_count`, `copy_count`)
-- copy modes: raw code, markdown block, and line numbers
+- AI assistant (improve, refactor, debug, explain)  
+- optional AI search, auto-tags, docs  
+
+- built-in runner (`py`, `cpp`, `txt`, `md`)  
+- stats, metadata + flexible copy modes  
 
 ## stack
 
-- next.js app router + typescript
-- tailwind css + shadcn ui
-- supabase (postgres + auth)
-- shiki for syntax highlighting
-- modular ai provider adapters (openai, anthropic, gemini, ollama, openrouter, openai-compatible, puter)
+next.js • typescript • tailwind • shadcn/ui  
+supabase (postgres + auth)  
+shiki • codemirror  
+ai: openai • anthropic • gemini • ollama • openrouter  
 
-## ui preview
+## preview
 
-### 1) snippets dashboard (dark)
-Primary workspace surface with quick actions, search/filter area, and snippet list cards.
-
+dashboard  
 ![Snippets dashboard](docs/screenshots/snippets-dashboard.png)
 
-### 2) workspace explorer (light)
-Explorer-style folder/workspace manager with size states and pinned snippet previews.
-
+explorer  
 ![Workspace explorer](docs/screenshots/workspace-explorer-light.png)
 
-### 3) ai edits panel
-Context-aware AI assistant sidebar with provider/model/mode controls and chat history.
-
+ai panel  
 ![AI edits panel](docs/screenshots/ai-edits-panel.png)
 
 ## setup
 
-1. install deps
-
 ```bash
 npm install
-```
+npm run dev
 
 2. create `.env.local`
 
@@ -66,7 +48,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 NEXT_PUBLIC_APP_URL=https://your-production-domain.com
 ```
 
-optional ai env vars (you can also provide keys in the ui):
+optional ai:
 
 ```env
 OPENAI_API_KEY=
@@ -87,106 +69,31 @@ SNIPS_EXEC_PROVIDER=piston
 SNIPS_EXEC_PISTON_URL=
 ```
 
-3. run sql schema in supabase sql editor
-
-- file: `supabase/schema.sql`
-- **important**: refresh api schema cache in supabase project settings -> api
-
-4. start dev server
-
-```bash
-npm run dev
-```
+3. run supabase/schema.sql and refresh api cache
 
 ## keyboard shortcuts
 
-- `n` on list page: open new snippet dialog
-- `?` on list page: show all shortcuts overlay
-- `esc`: close dialog, clear search, clear tag filter, or close shortcuts overlay
-- `cmd/ctrl + enter` in dialog: save snippet
-- `e` on detail page: edit snippet
-- `c` on detail page: copy snippet code
+- n new snippet
+- ? shortcuts
+- esc close / clear
+- cmd/ctrl + enter save
+- e edit • c copy
+- pin -> stays on top
+- share -> public link
+- tags -> comma-separated
+- AI -> improve / refactor / debug / explain
+- run -> python (local), cpp (external)
 
-## usage
+## notes
 
-**pinning**
-- click pin icon on snippet cards or detail page
-- pinned snippets appear at top of list
-
-**sharing**
-- click share button on detail page to copy url
-- toggle public/private to create shareable links
-- public snippets accessible at `/public/[id]` without auth
-
-**public snippets**
-- discover and explore public snippets from other users
-- search by title, language, or tags
-- filter by tags for discovery
-- credit to snippet creators in footer
-- no ai sidebar/chat is shown in public snippet view
-
-**ai assistant**
-- open the ai panel on snippet detail page
-- choose provider, model, and mode (`improve`, `refactor`, `debug`, `explain`)
-- ask for changes, then apply suggested code directly into the editor
-- generate tags and docs from snippet content in the snippet dialog
-- enable similarity search from settings to find related snippets by intent
-- `/api/ai/chat` requires an authenticated user session and is rate-limited
-- api keys entered in ui are kept in tab session storage (not local storage)
-- provider env vars are used as secure fallback when no ui key is provided
-
-**execution playground**
-- available on snippet detail pages with code editor, input panel, run button, and output panel
-- python runs locally in-browser (pyodide), including stdin support
-- txt and md are local passthrough modes
-- c++ online run is disabled in hosted free mode; run c++ locally
-- execution returns `stdout`, `stderr`, `runtime`, and `memory` when available
-- `/api/execute` remains available only if you configure your own external runner
-
-**benchmarks**
-- computed on save and stored in snippet metadata
-- metrics include `chars`, `bytes`, `bits`, and `lines`
-- latest execution `runtime` and `memory` are shown after playground runs
-
-**metadata tracking**
-- opening a snippet detail increments `view_count`
-- copy actions from snippet detail increment `copy_count`
-- edits continue to refresh `updated_at` via db trigger
-
-**copy modes**
-- choose between `raw code`, `markdown block`, and `line numbers` before copy
-- markdown mode output format:
-  - ```cpp
-  - int mid = l + (r-l)/2;
-  - ```
-
-**settings**
-- open settings from the header action
-- switch between `personal`, `ai`, `prefs`, `perf`, `a11y`, and `credits` in the mini vertical nav
-- personalization includes practical presets (`balanced`, `focused`, `expressive`, `custom`), ui density, and animation level
-- settings panel supports keyword search and a recently changed list
-- performance tab supports `auto`, `low`, `normal`, and `custom` hardware profiles
-- custom hardware profile lets users choose which optimizations to apply
-- preferences include compact layout, hint visibility, code wrapping, and default code theme
-
-**themes**
-- click palette icon on code blocks to switch syntax themes
-- theme preference persists in browser
-
-**tags**
-- comma-separated input in snippet dialog
-- duplicates auto-removed, normalized to lowercase
-- 30 character max per tag
-- tags truncated in ui with hover tooltip
-
-## performance notes
-
-- virtualized snippet list rendering
-- abort-safe snippet fetches with request tracking
-- background revalidation with session cache
-- shiki highlight cache for repeat code views
-- local preferences
-- efficient filtering
+- python runs in-browser (pyodide)
+- cpp requires external runner
+- execution returns stdout, stderr, runtime, memory
+- benchmarks: chars, bytes, bits, lines
+- metadata: views, copies, timestamps
+- tags deduped, lowercase, 30 char max
+- theme + settings persist locally
+- fast: virtualized list, cached highlighting, efficient filtering
 
 ## scripts
 
@@ -198,11 +105,10 @@ npm run build
 
 ## contributing
 
-- read the contribution process: [CONTRIBUTING.md](CONTRIBUTING.md)
+- see [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## deploy
 
-- includes `vercel.json` and `.vercelignore` for vercel deployment
-- make sure supabase auth url config includes your production domain/callbacks
+vercel ready; make sure supabase auth url is configured
 
 ### made with :) by jayan
