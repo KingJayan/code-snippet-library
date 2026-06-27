@@ -1,13 +1,13 @@
 <div align="center">
   <h2><code>KingJayan/code-snippet-library</code></h2>
-  <p>minimal, fast personal (and shared) snippet vault.</p>
+  <p>minimal, fast personal (and shared) code snippet vault.</p>
 </div>
 
 ## features
 
 - organize + pin snippets  
 - public sharing + `/public` discovery  
-- fast tag search + themes  
+- fast tag search + themes
 - magic link auth  
 
 - AI assistant (improve, refactor, debug, explain)  
